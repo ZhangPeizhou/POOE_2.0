@@ -6,6 +6,8 @@ import pickle
 import numpy as np
 from tqdm import tqdm
 import esm
+import subprocess
+import sys
 
 
 def get_esm2_model():
@@ -43,9 +45,18 @@ def run_esm2_extraction(input_fasta_path, output_dir, model_name="esm2_t33_650M_
     Outputs embeddings to `output_dir` folder using mean pooling at the specified layer.
     """
     os.makedirs(output_dir, exist_ok=True)
-    cmd = f"python features/ESM2/extract.py {model_name} {input_fasta_path} {output_dir} --include mean --repr_layers {repr_layer}"
-    print(f"Running: {cmd}")
-    os.system(cmd)
+    script_path = "features/ESM2/extract.py"
+    cmd = [
+        sys.executable, script_path,  # 使用当前解释器
+        model_name,
+        input_fasta_path,
+        output_dir,
+        "--include", "mean",
+        "--repr_layers", str(repr_layer)
+    ]
+    print("Running command:", " ".join(cmd))
+    subprocess.run(cmd, check=True)
+    
 
 def run_esm2_emb_model(seq_file, temp_dir):
     """
