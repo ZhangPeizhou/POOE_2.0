@@ -43,7 +43,7 @@ def run_esm2_extraction(input_fasta_path, output_dir, model_name="esm2_t33_650M_
     Outputs embeddings to `output_dir` folder using mean pooling at the specified layer.
     """
     os.makedirs(output_dir, exist_ok=True)
-    cmd = f"python extract.py {model_name} {input_fasta_path} {output_dir} --include mean --repr_layers {repr_layer}"
+    cmd = f"python features/ESM2/extract.py {model_name} {input_fasta_path} {output_dir} --include mean --repr_layers {repr_layer}"
     print(f"Running: {cmd}")
     os.system(cmd)
 
