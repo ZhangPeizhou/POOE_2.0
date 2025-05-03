@@ -60,20 +60,60 @@ def run_esm2_emb_model(seq_file, temp_dir):
     prepare_fasta_for_esm2(seq_file, input_fasta_for_esm, max_seq_len=4096)
     run_esm2_extraction(input_fasta_for_esm, output_dir_for_esm)
 
-if __name__ == "__main__":
-    import argparse
+def extract_esm2_features(temp_dir, out_file):
+    """
+    Extracts mean-pooled representations from saved .pt files in temp_dir/out_esm
+    and saves them as a pickle file.
+    If a sequence was split into chunks, re-averages using weighted sum.
+    """
+    esm_mean = {}
+    out_esm_dir = os.path.join(temp_dir, "out_esm")
 
-    parser = argparse.ArgumentParser(description='Generate ESM2 Mean Embedding')
-    parser.add_argument("input", type=str, help="Path to input FASTA file")
-    parser.add_argument("output", type=str, help="Path to output .pkl file")
-    parser.add_argument("tmp_dir", type=str, help="Temporary working directory")
+    # Group all chunks by original sequence ID
+    ids_embs = {}
+    for f_name in os.listdir(out_esm_dir):
+        if "__" in f_name:
+            k = f_name.split("__")[0]
+            ids_embs.setdefault(k, []).append(f_name)
+        else:
+            ids_embs[f_name.split(".pt")[0]] = [f_name]
+
+    for k, v in ids_embs.items():
+        v = sorted(v)
+        if len(v) == 1:
+            tensor = torch.load(os.path.join(out_esm_dir, v[0]))["mean_representations"][33].numpy()
+            esm_mean[k] = tensor
+        else:
+            # Handle chunked sequences with length-weighted average
+            tensors = []
+            weights = []
+            for fname in v:
+                tensor = torch.load(os.path.join(out_esm_dir, fname))["mean_representations"][33].numpy()
+                length = int(fname.split("_")[1].split(".")[0])
+                tensors.append(tensor)
+                weights.append(length)
+            weights = np.array(weights, dtype=np.float32)
+            weights /= weights.sum()
+            weighted_avg = np.sum([t * w for t, w in zip(tensors, weights)], axis=0)
+            esm_mean[k] = weighted_avg
+
+    with open(out_file, "wb") as f:
+        pickle.dump(esm_mean, f)
+
+def main():
+    parser = argparse.ArgumentParser(description='Generate ESM-2 embeddings of proteins')
+    parser.add_argument("input", type=str, help='Input FASTA file')
+    parser.add_argument("output", type=str, help='Output pickle file')
+    parser.add_argument("tmp_dir", type=str, default="./cache/", help='Temporary directory')
+
     args = parser.parse_args()
 
-    # Step 1: Run extract.py to generate .pt files
-    run_esm2(args.input, args.tmp_dir)
+    run_esm2_emb_model(args.input, args.tmp_dir)
+    extract_esm2_features(args.tmp_dir, args.output)
 
-    # Step 2: Load .pt files and aggregate to get mean embedding
-    extract_esm_mean_feature(args.tmp_dir, args.output)
+if __name__ == "__main__":
+    main()
+
 
 '''
 !python3.9 features/ESM2/generate_ESM2.py \
@@ -81,4 +121,3 @@ if __name__ == "__main__":
     features/ESM2/output_embeds.pkl \
     features/ESM2/tmp_cache/
 '''
-
