@@ -1,50 +1,32 @@
 import argparse
 import os
-from Bio import SeqIO
+import re
 import torch
 import pickle
 import numpy as np
-from tqdm import tqdm
-import esm
+from Bio import SeqIO
 import subprocess
 import sys
-import re
-
-
-def get_esm2_model():
-    """
-    Load the pretrained ESM-2 model and its tokenizer (alphabet).
-    This version uses esm2_t33_650M_UR50D, which has 650M parameters.
-    """
-    model, alphabet = esm.pretrained.esm2_t33_650M_UR50D()
-    model.eval()
-    batch_converter = alphabet.get_batch_converter()
-    return model, batch_converter
 
 
 def clean_sequence(seq):
     """
-    Remove any non-standard amino acid characters (e.g., '*', 'X', etc.)
-    Only keep 20 standard amino acids: A, C, D, E, F, G, H, I, K, L, M,
-    N, P, Q, R, S, T, V, W, Y
+    Remove non-standard amino acids (only keep 20 standard: ACDEFGHIKLMNPQRSTVWY).
     """
     return re.sub(r'[^ACDEFGHIKLMNPQRSTVWY]', '', seq)
 
 
 def prepare_fasta_for_esm2(input_fasta_path, output_fasta_path, max_seq_len=4096):
     """
-    Reads sequences from an input FASTA file and writes them to a new FASTA file.
-    If any sequence is longer than `max_seq_len`, it will be split into chunks.
+    Read input fasta, clean illegal characters, split if needed, and save for ESM.
     """
     sequences = {rec.id: str(rec.seq) for rec in SeqIO.parse(input_fasta_path, "fasta")}
-
     with open(output_fasta_path, "w") as out_f:
         for seq_id, seq in sequences.items():
-            seq_clean = clean_sequence(seq)  # 清洗非法字符
+            seq_clean = clean_sequence(seq)
             if len(seq_clean) == 0:
-                print(f"Warning: sequence {seq_id} was entirely invalid and removed.")
+                print(f"⚠️ Skipped {seq_id}: sequence cleaned to empty.")
                 continue
-
             if len(seq_clean) > max_seq_len:
                 for i in range((len(seq_clean) - 1) // max_seq_len + 1):
                     sub_seq = seq_clean[i * max_seq_len : (i + 1) * max_seq_len]
@@ -56,53 +38,39 @@ def prepare_fasta_for_esm2(input_fasta_path, output_fasta_path, max_seq_len=4096
 
 def run_esm2_extraction(input_fasta_path, output_dir, model_name="esm2_t33_650M_UR50D", repr_layer=33):
     """
-    Runs the ESM-2 extraction command using the given model.
-    Outputs embeddings to `output_dir` folder using mean pooling at the specified layer.
+    Call ESM2 extract.py to generate .pt files for embeddings.
     """
     os.makedirs(output_dir, exist_ok=True)
     script_path = "features/ESM2/extract.py"
     cmd = [
-        sys.executable, script_path,  # 使用当前解释器
+        sys.executable, script_path,
         model_name,
         input_fasta_path,
         output_dir,
         "--include", "mean",
         "--repr_layers", str(repr_layer)
     ]
-    print("Running command:", " ".join(cmd))
+    print(f"🚀 Running command: {' '.join(cmd)}")
     subprocess.run(cmd, check=True)
-    
 
-def run_esm2_emb_model(seq_file, temp_dir):
-    """
-    Master function that calls the above two sub-functions in order:
-    1. Prepares the input fasta for ESM2 (with chunking).
-    2. Runs the ESM2 embedding extraction script.
-    """
-    os.makedirs(temp_dir, exist_ok=True)
-    input_fasta_for_esm = os.path.join(temp_dir, "input_for_esm.fasta")
-    output_dir_for_esm = os.path.join(temp_dir, "out_esm")
 
-    prepare_fasta_for_esm2(seq_file, input_fasta_for_esm, max_seq_len=4096)
-    run_esm2_extraction(input_fasta_for_esm, output_dir_for_esm)
-
-def extract_esm2_features(temp_dir, out_file):
+def extract_esm2_features(temp_dir, output_path):
     """
-    Extracts mean-pooled representations from saved .pt files in temp_dir/out_esm
-    and saves them as a pickle file.
-    If a sequence was split into chunks, re-averages using weighted sum.
+    Aggregate all .pt files from ESM output into a single .pkl file.
+    Supports recombining chunked sequences using weighted average.
     """
-    esm_mean = {}
     out_esm_dir = os.path.join(temp_dir, "out_esm")
-
-    # Group all chunks by original sequence ID
+    esm_mean = {}
     ids_embs = {}
-    for f_name in os.listdir(out_esm_dir):
-        if "__" in f_name:
-            k = f_name.split("__")[0]
-            ids_embs.setdefault(k, []).append(f_name)
+
+    for fname in os.listdir(out_esm_dir):
+        if not fname.endswith(".pt"):
+            continue
+        if "__" in fname:
+            k = fname.split("__")[0]
+            ids_embs.setdefault(k, []).append(fname)
         else:
-            ids_embs[f_name.split(".pt")[0]] = [f_name]
+            ids_embs[fname.split(".pt")[0]] = [fname]
 
     for k, v in ids_embs.items():
         v = sorted(v)
@@ -110,57 +78,57 @@ def extract_esm2_features(temp_dir, out_file):
             tensor = torch.load(os.path.join(out_esm_dir, v[0]))["mean_representations"][33].numpy()
             esm_mean[k] = tensor
         else:
-            # Handle chunked sequences with length-weighted average
             tensors = []
             weights = []
             for fname in v:
-                tensor = torch.load(os.path.join(out_esm_dir, fname))["mean_representations"][33].numpy()
-                length = int(fname.split("_")[1].split(".")[0])
-                tensors.append(tensor)
-                weights.append(length)
-            weights = np.array(weights, dtype=np.float32)
-            weights /= weights.sum()
-            weighted_avg = np.sum([t * w for t, w in zip(tensors, weights)], axis=0)
-            esm_mean[k] = weighted_avg
+                try:
+                    length = int(fname.split("_")[1].split(".")[0])
+                    tensor = torch.load(os.path.join(out_esm_dir, fname))["mean_representations"][33].numpy()
+                    tensors.append(tensor)
+                    weights.append(length)
+                except Exception as e:
+                    print(f"⚠️ Skipping {fname}: {e}")
+                    continue
+            if tensors:
+                weights = np.array(weights, dtype=np.float32)
+                weights /= weights.sum()
+                weighted_avg = np.sum([t * w for t, w in zip(tensors, weights)], axis=0)
+                esm_mean[k] = weighted_avg
 
-    with open(out_file, "wb") as f:
+    with open(output_path, "wb") as f:
         pickle.dump(esm_mean, f)
 
+    print(f"✅ Saved: {output_path} with {len(esm_mean)} sequences")
+
+
+def run_single_fasta(input_fasta, output_pkl, temp_dir):
+    os.makedirs(temp_dir, exist_ok=True)
+    input_fasta_for_esm = os.path.join(temp_dir, "input_for_esm.fasta")
+    out_esm_dir = os.path.join(temp_dir, "out_esm")
+
+    if os.path.exists(input_fasta_for_esm):
+        os.remove(input_fasta_for_esm)
+    if os.path.exists(out_esm_dir):
+        for f in os.listdir(out_esm_dir):
+            os.remove(os.path.join(out_esm_dir, f))
+
+    prepare_fasta_for_esm2(input_fasta, input_fasta_for_esm)
+    run_esm2_extraction(input_fasta_for_esm, out_esm_dir)
+    extract_esm2_features(temp_dir, output_pkl)
+
+
 def main():
-    parser = argparse.ArgumentParser(description='Batch generate ESM-2 embeddings for multiple FASTA files')
-    parser.add_argument("input_dir", type=str, help='Input directory containing FASTA files')
-    parser.add_argument("output_dir", type=str, help='Output directory for pickle files')
-    parser.add_argument("tmp_dir", type=str, default="./cache/", help='Temporary directory for intermediate files')
+    parser = argparse.ArgumentParser(description="Run ESM2 on one fasta file and save as .pkl")
+    parser.add_argument("input_fasta", type=str, help="Input FASTA file path")
+    parser.add_argument("output_pkl", type=str, help="Output .pkl file path")
+    parser.add_argument("tmp_dir", type=str, help="Temporary directory")
     args = parser.parse_args()
 
-    fasta_files = [f for f in os.listdir(args.input_dir) if f.endswith(".fasta")]
-    os.makedirs(args.output_dir, exist_ok=True)
-
-    for fasta_file in fasta_files:
-        input_path = os.path.join(args.input_dir, fasta_file)
-        output_name = fasta_file.replace(".fasta", ".pkl")
-        output_path = os.path.join(args.output_dir, output_name)
-
-        print(f"\nProcessing: {fasta_file}")
-        run_esm2_emb_model(input_path, args.tmp_dir)
-        extract_esm2_features(args.tmp_dir, output_path)
-
+    print(f"\n📂 Input:  {args.input_fasta}")
+    print(f"📦 Output: {args.output_pkl}")
+    print(f"🧪 Temp:   {args.tmp_dir}")
+    run_single_fasta(args.input_fasta, args.output_pkl, args.tmp_dir)
 
 
 if __name__ == "__main__":
     main()
-
-# Process training data
-'''
-!python3.9 features/ESM2/generate_ESM2.py \
-    data/training_data \
-    features/ESM2/output_pkls \
-    features/ESM2/tmp_cache/
-'''
-# Process additional data
-'''
-!python3.9 features/ESM2/generate_ESM2.py \
-    data/additional_data/Additional_test_29.fasta \
-    features/ESM2/pkl_additional_29.pkl \
-    features/ESM2/tmp_add_29/
-'''
