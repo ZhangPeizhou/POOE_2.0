@@ -8,6 +8,7 @@ from tqdm import tqdm
 import esm
 import subprocess
 import sys
+import re
 
 
 def get_esm2_model():
