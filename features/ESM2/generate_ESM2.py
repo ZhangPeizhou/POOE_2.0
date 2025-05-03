@@ -20,6 +20,16 @@ def get_esm2_model():
     batch_converter = alphabet.get_batch_converter()
     return model, batch_converter
 
+
+def clean_sequence(seq):
+    """
+    Remove any non-standard amino acid characters (e.g., '*', 'X', etc.)
+    Only keep 20 standard amino acids: A, C, D, E, F, G, H, I, K, L, M,
+    N, P, Q, R, S, T, V, W, Y
+    """
+    return re.sub(r'[^ACDEFGHIKLMNPQRSTVWY]', '', seq)
+
+
 def prepare_fasta_for_esm2(input_fasta_path, output_fasta_path, max_seq_len=4096):
     """
     Reads sequences from an input FASTA file and writes them to a new FASTA file.
@@ -29,15 +39,19 @@ def prepare_fasta_for_esm2(input_fasta_path, output_fasta_path, max_seq_len=4096
 
     with open(output_fasta_path, "w") as out_f:
         for seq_id, seq in sequences.items():
-            if len(seq) > max_seq_len:
-                # Split long sequences into sub-segments
-                for i in range((len(seq) - 1) // max_seq_len + 1):
-                    sub_seq = seq[i * max_seq_len : (i + 1) * max_seq_len]
+            seq_clean = clean_sequence(seq)  # 清洗非法字符
+            if len(seq_clean) == 0:
+                print(f"Warning: sequence {seq_id} was entirely invalid and removed.")
+                continue
+
+            if len(seq_clean) > max_seq_len:
+                for i in range((len(seq_clean) - 1) // max_seq_len + 1):
+                    sub_seq = seq_clean[i * max_seq_len : (i + 1) * max_seq_len]
                     sub_id = f"{seq_id}__{i}_{len(sub_seq)}"
                     out_f.write(f">{sub_id}\n{sub_seq}\n")
             else:
-                # Write normally if not too long
-                out_f.write(f">{seq_id}\n{seq}\n")
+                out_f.write(f">{seq_id}\n{seq_clean}\n")
+
 
 def run_esm2_extraction(input_fasta_path, output_dir, model_name="esm2_t33_650M_UR50D", repr_layer=33):
     """
