@@ -132,3 +132,10 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+'''
+!python3.9 features/ESM2/generate_ESM2.py \
+  data/training_data/positivedata549.fasta \
+  features/ESM2/output_by_fasta/positivedata549.pkl \
+  features/ESM2/tmp_cache/
+'''
