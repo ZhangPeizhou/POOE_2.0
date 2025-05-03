@@ -135,10 +135,17 @@ def main():
 if __name__ == "__main__":
     main()
 
-
+# Process training data
 '''
 !python3.9 features/ESM2/generate_ESM2.py \
     data/training_data \
     features/ESM2/output_pkls \
     features/ESM2/tmp_cache/
+'''
+# Process additional data
+'''
+!python3.9 features/ESM2/generate_ESM2.py \
+    data/additional_data/Additional_test_29.fasta \
+    features/ESM2/pkl_additional_29.pkl \
+    features/ESM2/tmp_add_29/
 '''
