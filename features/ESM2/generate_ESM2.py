@@ -60,3 +60,25 @@ def run_esm2_emb_model(seq_file, temp_dir):
     prepare_fasta_for_esm2(seq_file, input_fasta_for_esm, max_seq_len=4096)
     run_esm2_extraction(input_fasta_for_esm, output_dir_for_esm)
 
+if __name__ == "__main__":
+    import argparse
+
+    parser = argparse.ArgumentParser(description='Generate ESM2 Mean Embedding')
+    parser.add_argument("input", type=str, help="Path to input FASTA file")
+    parser.add_argument("output", type=str, help="Path to output .pkl file")
+    parser.add_argument("tmp_dir", type=str, help="Temporary working directory")
+    args = parser.parse_args()
+
+    # Step 1: Run extract.py to generate .pt files
+    run_esm2(args.input, args.tmp_dir)
+
+    # Step 2: Load .pt files and aggregate to get mean embedding
+    extract_esm_mean_feature(args.tmp_dir, args.output)
+
+'''
+!python3.9 features/ESM2/generate_ESM2.py \
+    data/training_data/positivedata549.fasta \
+    features/ESM2/output_embeds.pkl \
+    features/ESM2/tmp_cache/
+'''
+
