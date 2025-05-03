@@ -112,15 +112,25 @@ def extract_esm2_features(temp_dir, out_file):
         pickle.dump(esm_mean, f)
 
 def main():
-    parser = argparse.ArgumentParser(description='Generate ESM-2 embeddings of proteins')
-    parser.add_argument("input", type=str, help='Input FASTA file')
-    parser.add_argument("output", type=str, help='Output pickle file')
-    parser.add_argument("tmp_dir", type=str, default="./cache/", help='Temporary directory')
-
+    parser = argparse.ArgumentParser(description='Batch generate ESM-2 embeddings for multiple FASTA files')
+    parser.add_argument("input_dir", type=str, help='Input directory containing FASTA files')
+    parser.add_argument("output_dir", type=str, help='Output directory for pickle files')
+    parser.add_argument("tmp_dir", type=str, default="./cache/", help='Temporary directory for intermediate files')
     args = parser.parse_args()
 
-    run_esm2_emb_model(args.input, args.tmp_dir)
-    extract_esm2_features(args.tmp_dir, args.output)
+    fasta_files = [f for f in os.listdir(args.input_dir) if f.endswith(".fasta")]
+    os.makedirs(args.output_dir, exist_ok=True)
+
+    for fasta_file in fasta_files:
+        input_path = os.path.join(args.input_dir, fasta_file)
+        output_name = fasta_file.replace(".fasta", ".pkl")
+        output_path = os.path.join(args.output_dir, output_name)
+
+        print(f"\nProcessing: {fasta_file}")
+        run_esm2_emb_model(input_path, args.tmp_dir)
+        extract_esm2_features(args.tmp_dir, output_path)
+
+
 
 if __name__ == "__main__":
     main()
@@ -128,7 +138,7 @@ if __name__ == "__main__":
 
 '''
 !python3.9 features/ESM2/generate_ESM2.py \
-    data/training_data/positivedata549.fasta \
-    features/ESM2/output_embeds.pkl \
+    data/training_data \
+    features/ESM2/output_pkls \
     features/ESM2/tmp_cache/
 '''
