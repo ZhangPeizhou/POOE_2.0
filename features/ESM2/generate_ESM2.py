@@ -54,53 +54,56 @@ def run_esm2_extraction(input_fasta_path, output_dir, model_name="esm2_t33_650M_
     subprocess.run(cmd, check=True)
 
 
-def extract_esm2_features(temp_dir, output_path):
-    """
-    Aggregate all .pt files from ESM output into a single .pkl file.
-    Supports recombining chunked sequences using weighted average.
-    """
-    out_esm_dir = os.path.join(temp_dir, "out_esm")
+import os
+import pickle
+import torch
+import numpy as np
+
+def extract_esm2_features(pt_dir, output_pkl):
     esm_mean = {}
+
+    # 收集文件
     ids_embs = {}
-
-    os.makedirs(os.path.dirname(output_path), exist_ok=True)
-
-    for fname in os.listdir(out_esm_dir):
-        if not fname.endswith(".pt"):
-            continue
-        if "__" in fname:
-            k = fname.split("__")[0]
-            ids_embs.setdefault(k, []).append(fname)
-        else:
-            ids_embs[fname.split(".pt")[0]] = [fname]
+    for f_name in os.listdir(pt_dir):
+        if f_name.endswith(".pt"):
+            if "__" in f_name:
+                key = f_name.split("__")[0]
+            else:
+                key = f_name.split(".pt")[0]
+            ids_embs.setdefault(key, []).append(f_name)
 
     for k, v in ids_embs.items():
         v = sorted(v)
         if len(v) == 1:
-            tensor = torch.load(os.path.join(out_esm_dir, v[0]))["mean_representations"][33].numpy()
+            tensor = torch.load(os.path.join(pt_dir, v[0]))["mean_representations"][33].numpy()
             esm_mean[k] = tensor
         else:
-            tensors = []
-            weights = []
+            tensors, weights = [], []
             for fname in v:
                 try:
-                    length = int(fname.split("_")[1].split(".")[0])
-                    tensor = torch.load(os.path.join(out_esm_dir, fname))["mean_representations"][33].numpy()
+                    parts = fname.split("__")[1].split("_")
+                    if len(parts) != 2:
+                        raise ValueError(f"Unexpected chunk format: {fname}")
+                    length = int(parts[1].replace(".pt", ""))  # 修复这里的问题
+                    tensor = torch.load(os.path.join(pt_dir, fname))["mean_representations"][33].numpy()
                     tensors.append(tensor)
                     weights.append(length)
                 except Exception as e:
                     print(f"⚠️ Skipping {fname}: {e}")
                     continue
+
             if tensors:
                 weights = np.array(weights, dtype=np.float32)
                 weights /= weights.sum()
                 weighted_avg = np.sum([t * w for t, w in zip(tensors, weights)], axis=0)
                 esm_mean[k] = weighted_avg
-  
-    with open(output_path, "wb") as f:
+
+    # 保存
+    os.makedirs(os.path.dirname(output_pkl), exist_ok=True)
+    with open(output_pkl, "wb") as f:
         pickle.dump(esm_mean, f)
 
-    print(f"✅ Saved: {output_path} with {len(esm_mean)} sequences")
+    print(f"✅ Saved: {output_pkl} with {len(esm_mean)} sequences")
 
 
 def run_single_fasta(input_fasta, output_pkl, temp_dir):
