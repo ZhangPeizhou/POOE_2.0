@@ -63,6 +63,8 @@ def extract_esm2_features(temp_dir, output_path):
     esm_mean = {}
     ids_embs = {}
 
+    os.makedirs(os.path.dirname(output_path), exist_ok=True)
+
     for fname in os.listdir(out_esm_dir):
         if not fname.endswith(".pt"):
             continue
@@ -94,7 +96,7 @@ def extract_esm2_features(temp_dir, output_path):
                 weights /= weights.sum()
                 weighted_avg = np.sum([t * w for t, w in zip(tensors, weights)], axis=0)
                 esm_mean[k] = weighted_avg
-
+  
     with open(output_path, "wb") as f:
         pickle.dump(esm_mean, f)
 
