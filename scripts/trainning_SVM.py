@@ -22,6 +22,8 @@ import pandas as pd
 from sklearn.metrics import auc
 from sklearn.metrics import roc_curve
 from get_features import Features as Features
+import sys
+import os
 
 
 #1.Read three parameters

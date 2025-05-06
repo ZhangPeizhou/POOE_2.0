@@ -1,14 +1,16 @@
-# features/get_features.py
-import pickle
 import os
+import pickle
 
 class Features:
-    def __init__(self, info):
-        # info 通常是 ["esm2", "output_by_fasta", "1670"]
-        self.data_path = os.path.join("features", *info)
-        self.data_dict = {}
+    def __init__(self, info=None):
+        # 强制使用绝对路径
+        self.data_path = os.path.abspath(os.path.join("..", "features", *info))
+        print(f"[DEBUG] using absolute path: {self.data_path}")
+        
+        if not os.path.exists(self.data_path):
+            raise FileNotFoundError(f"[FATAL] Path does not exist: {self.data_path}")
 
-        # 加载 .pkl 文件（可能有多个）
+        self.data_dict = {}
         for filename in os.listdir(self.data_path):
             if filename.endswith(".pkl"):
                 with open(os.path.join(self.data_path, filename), 'rb') as f:
