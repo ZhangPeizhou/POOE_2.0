@@ -46,9 +46,10 @@ for foldn in range(5):
     print(f"fold{foldn}: load file => ",end="");sys.stdout.flush();
     train = np.genfromtxt(train_files[foldn],str)
     test  = np.genfromtxt(test_files[foldn],str)
-    c2h = np.genfromtxt(c2h_files[foldn],str)
-    c2p = np.genfromtxt(c2p_files[foldn],str)
-    c3 = np.genfromtxt(c3_files[foldn],str)
+    # 下面这三行是我注释掉的，因为根本没用且不注释掉无法运行
+    #c2h = np.genfromtxt(c2h_files[foldn],str)
+    #c2p = np.genfromtxt(c2p_files[foldn],str)
+    #c3 = np.genfromtxt(c3_files[foldn],str)
 
     print("encode file =>",end="");sys.stdout.flush();#code
     X_train, y_train = train[:,:2], train[:,2].astype(np.float32)
