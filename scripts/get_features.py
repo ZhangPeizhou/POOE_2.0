@@ -7,6 +7,7 @@ class Features:
         # info 通常是 ["esm2", "output_by_fasta", "1670"]
         self.data_path = os.path.join("features", *info)
         self.data_dict = {}
+        print("[DEBUG] Current resolved feature path:", self.data_path)
 
         # 加载 .pkl 文件（可能有多个）
         for filename in os.listdir(self.data_path):
@@ -18,3 +19,6 @@ class Features:
         if name not in self.data_dict:
             raise KeyError(f"Protein name '{name}' not found in features.")
         return self.data_dict[name]
+    
+    
+
