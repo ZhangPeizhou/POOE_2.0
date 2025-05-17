@@ -44,8 +44,15 @@ test_scores  = []
 
 for foldn in range(5):
     print(f"fold{foldn}: load file => ",end="");sys.stdout.flush();
-    train = np.genfromtxt(train_files[foldn],str)
-    test  = np.genfromtxt(test_files[foldn],str)
+    # 下面这两行是我comment掉的
+    #train = np.genfromtxt(train_files[foldn],str)
+    #test  = np.genfromtxt(test_files[foldn],str)
+    # 下面这三行是我加的
+    def load_txt(file):
+      with open(file, "r") as f:
+          return [line.strip().split() for line in f if len(line.strip().split()) == 3]
+    train = load_txt(train_files[foldn])
+    test  = load_txt(test_files[foldn])
     # 下面这三行是我注释掉的，因为根本没用且不注释掉无法运行
     #c2h = np.genfromtxt(c2h_files[foldn],str)
     #c2p = np.genfromtxt(c2p_files[foldn],str)
