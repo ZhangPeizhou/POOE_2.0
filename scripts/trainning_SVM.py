@@ -47,7 +47,7 @@ for foldn in range(5):
     # 下面这两行是我comment掉的，不然实在无法运行
     #train = np.genfromtxt(train_files[foldn],str)
     #test  = np.genfromtxt(test_files[foldn],str)
-    # 下面这三行是我加的，更改了读取格式
+    # 下面这五行是我加的，更改了读取格式
     def load_txt(file):
       with open(file, "r") as f:
           return [line.strip().split() for line in f if len(line.strip().split()) == 3]
@@ -62,6 +62,7 @@ for foldn in range(5):
     #下面这两行是我comment掉的，要重写
     #X_train, y_train = train[:,:2], train[:,2].astype(np.float32)
     #X_test,  y_test  = test[:,:2],  test[:,2].astype(np.float32)
+    # 下面这四行是我的改写
     X_train = [row[:2] for row in train]
     y_train = np.array([float(row[2]) for row in train], dtype=np.float32)
     X_test = [row[:2] for row in test]
