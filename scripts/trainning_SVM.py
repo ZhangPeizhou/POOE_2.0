@@ -44,10 +44,10 @@ test_scores  = []
 
 for foldn in range(5):
     print(f"fold{foldn}: load file => ",end="");sys.stdout.flush();
-    # 下面这两行是我comment掉的
+    # 下面这两行是我comment掉的，不然实在无法运行
     #train = np.genfromtxt(train_files[foldn],str)
     #test  = np.genfromtxt(test_files[foldn],str)
-    # 下面这三行是我加的
+    # 下面这三行是我加的，更改了读取格式
     def load_txt(file):
       with open(file, "r") as f:
           return [line.strip().split() for line in f if len(line.strip().split()) == 3]
@@ -59,8 +59,13 @@ for foldn in range(5):
     #c3 = np.genfromtxt(c3_files[foldn],str)
 
     print("encode file =>",end="");sys.stdout.flush();#code
-    X_train, y_train = train[:,:2], train[:,2].astype(np.float32)
-    X_test,  y_test  = test[:,:2],  test[:,2].astype(np.float32)
+    #下面这两行是我comment掉的，要重写
+    #X_train, y_train = train[:,:2], train[:,2].astype(np.float32)
+    #X_test,  y_test  = test[:,:2],  test[:,2].astype(np.float32)
+    X_train = [row[:2] for row in train]
+    y_train = np.array([float(row[2]) for row in train], dtype=np.float32)
+    X_test = [row[:2] for row in test]
+    y_test = np.array([float(row[2]) for row in test], dtype=np.float32)
 
     x_train = np.array([np.hstack([features.get(j,foldn) for j in i]) for i in X_train ]) 
     x_test  = np.array([np.hstack([features.get(j,foldn) for j in i]) for i in X_test  ]) 
