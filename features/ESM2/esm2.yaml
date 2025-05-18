@@ -1,0 +1,16 @@
+name: esm2_env
+channels:
+  - defaults
+  - pytorch
+  - conda-forge
+dependencies:
+  - python=3.9
+  - pytorch
+  - cudatoolkit=11.3  # 视你当前环境可选
+  - numpy
+  - biopython
+  - fair-esm  # ESM 官方库
+  - tqdm
+  - pip
+  - pip:
+      - transformers
