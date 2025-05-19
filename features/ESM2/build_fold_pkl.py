@@ -3,7 +3,7 @@ import pickle
 
 def load_seqnames(txt_file):
     with open(txt_file) as f:
-        return [line.strip().replace(">", "") for line in f]
+        return [line.strip()[1:] for line in f if line.startswith(">")]
 
 def extract_subset(all_data, names):
     missing = [n for n in names if n not in all_data]
