@@ -8,45 +8,40 @@ def load_seqnames(txt_file):
 def extract_subset(all_data, names):
     missing = [n for n in names if n not in all_data]
     if missing:
-        print(f"⚠️ WARNING: {len(missing)} proteins not found in .pkl: {missing[:3]} ...")
+        print(f"⚠️ {len(missing)} IDs not found in .pkl (showing 3): {missing[:3]}")
     return [all_data[n] for n in names if n in all_data]
 
 def build_fold_pkl(fold_id, pos_pkl_path, neg_pkl_path, split_dir, out_dir):
     os.makedirs(out_dir, exist_ok=True)
 
-    # Load embeddings
     with open(pos_pkl_path, "rb") as f:
         pos_all = pickle.load(f)
     with open(neg_pkl_path, "rb") as f:
         neg_all = pickle.load(f)
 
-    # Load names
-    pos_train_ids = load_seqnames(os.path.join(split_dir, f"x_train1670_seqname_k{fold_id}.txt"))
-    pos_test_ids  = load_seqnames(os.path.join(split_dir, f"x_test1670_seqname_k{fold_id}.txt"))
+    # 正样本
+    pos_train_ids = load_seqnames(os.path.join(split_dir, f"x_train549_seqname_k{fold_id}.txt"))
+    pos_test_ids = load_seqnames(os.path.join(split_dir, f"x_test549_seqname_k{fold_id}.txt"))
 
-    # Filter: Positive if ID in positive embedding dict
-    pos_train_ids = [pid for pid in pos_train_ids if pid in pos_all]
-    pos_test_ids  = [pid for pid in pos_test_ids  if pid in pos_all]
-    neg_train_ids = [pid for pid in pos_train_ids if pid in neg_all]
-    neg_test_ids  = [pid for pid in pos_test_ids  if pid in neg_all]
+    # 负样本
+    neg_train_ids = load_seqnames(os.path.join(split_dir, f"x_train1670_seqname_k{fold_id}.txt"))
+    neg_test_ids = load_seqnames(os.path.join(split_dir, f"x_test1670_seqname_k{fold_id}.txt"))
 
     print(f"[Fold {fold_id}] Pos train: {len(pos_train_ids)}, test: {len(pos_test_ids)}")
     print(f"[Fold {fold_id}] Neg train: {len(neg_train_ids)}, test: {len(neg_test_ids)}")
 
-    # Build output
     pickle.dump(extract_subset(pos_all, pos_train_ids), open(f"{out_dir}/positivedata_k{fold_id}.pkl", "wb"))
     pickle.dump(extract_subset(pos_all, pos_test_ids), open(f"{out_dir}/positivedata_test_k{fold_id}.pkl", "wb"))
     pickle.dump(extract_subset(neg_all, neg_train_ids), open(f"{out_dir}/negativedata_k{fold_id}.pkl", "wb"))
     pickle.dump(extract_subset(neg_all, neg_test_ids), open(f"{out_dir}/negativedata_test_k{fold_id}.pkl", "wb"))
 
-    print(f"✅ Fold {fold_id} .pkl files generated in: {out_dir}")
+    print(f"✅ Fold {fold_id} .pkl files saved to: {out_dir}")
 
-# Example usage
 if __name__ == "__main__":
     for k in range(1, 6):
         build_fold_pkl(
             fold_id=k,
-            pos_pkl_path="esm2/positivedata549_esm2.pkl",
+            pos_pkl_path="esm2/positive549_esm2.pkl",
             neg_pkl_path="esm2/negativedata1670_esm2.pkl",
             split_dir="data/train_test_seqname",
             out_dir=f"esm2/fold{k}_pkl"
