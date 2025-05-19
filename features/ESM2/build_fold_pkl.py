@@ -5,68 +5,58 @@ def load_seqnames(txt_file):
     with open(txt_file) as f:
         return [line.strip().lstrip(">") for line in f if line.strip()]
 
-def build_id_map(full_dict):
-    """
-    构造一个 {别名: 原始key} 的映射，支持 sp|...|EPI11_PHYIT 或直接 ID
-    """
-    mapping = {}
-    for full_id in full_dict.keys():
-        mapping[full_id] = full_id  # 保留完整ID
-        if "|" in full_id:
-            parts = full_id.split("|")
-            for part in parts:
-                mapping[part] = full_id
-        if ":" in full_id:
-            parts = full_id.split(":")
-            for part in parts:
-                mapping[part] = full_id
-        if "." in full_id:
-            mapping[full_id.split(".")[0]] = full_id
-    return mapping
+def extract_subset(pkl_data, id_list, role, fold_k, part):
+    found = {}
+    not_found = []
 
-def extract_subset(full_dict, name_list):
-    name_map = build_id_map(full_dict)
-    matched = []
-    missing = []
-    for name in name_list:
-        if name in name_map:
-            matched.append(full_dict[name_map[name]])
+    for pid in id_list:
+        if pid in pkl_data:
+            found[pid] = pkl_data[pid]
         else:
-            missing.append(name)
-    if missing:
-        print(f"⚠️ {len(missing)} not found in .pkl: {missing[:5]}")
-    return matched
+            not_found.append(pid)
 
-def build_fold_pkl(fold_id, pos_pkl_path, neg_pkl_path, split_dir, out_dir):
-    os.makedirs(out_dir, exist_ok=True)
+    if not_found:
+        print(f"⚠️ Fold {fold_k} {role} {part}: {len(not_found)} not found in .pkl (sample: {not_found[:3]})")
 
-    with open(pos_pkl_path, "rb") as f:
-        pos_all = pickle.load(f)
-    with open(neg_pkl_path, "rb") as f:
-        neg_all = pickle.load(f)
+    return found
 
-    pos_train_ids = list(pos_all.keys())  # 正样本不划分
-    pos_test_ids = list(pos_all.keys())
+def build_one_fold(k, pos_dict, neg_dict, txt_dir, output_dir):
+    os.makedirs(output_dir, exist_ok=True)
 
-    neg_train_ids = load_seqnames(os.path.join(split_dir, f"x_train1670_seqname_k{fold_id}.txt"))
-    neg_test_ids = load_seqnames(os.path.join(split_dir, f"x_test1670_seqname_k{fold_id}.txt"))
+    train_ids = load_seqnames(os.path.join(txt_dir, f"x_train1670_seqname_k{k}.txt"))
+    test_ids  = load_seqnames(os.path.join(txt_dir, f"x_test1670_seqname_k{k}.txt"))
 
-    print(f"[Fold {fold_id}] Pos train: {len(pos_train_ids)}, test: {len(pos_test_ids)}")
-    print(f"[Fold {fold_id}] Neg train: {len(neg_train_ids)}, test: {len(neg_test_ids)}")
+    pos_train = [id for id in train_ids if id in pos_dict]
+    neg_train = [id for id in train_ids if id in neg_dict]
 
-    pickle.dump(extract_subset(pos_all, pos_train_ids), open(f"{out_dir}/positivedata_k{fold_id}.pkl", "wb"))
-    pickle.dump(extract_subset(pos_all, pos_test_ids), open(f"{out_dir}/positivedata_test_k{fold_id}.pkl", "wb"))
-    pickle.dump(extract_subset(neg_all, neg_train_ids), open(f"{out_dir}/negativedata_k{fold_id}.pkl", "wb"))
-    pickle.dump(extract_subset(neg_all, neg_test_ids), open(f"{out_dir}/negativedata_test_k{fold_id}.pkl", "wb"))
+    pos_test = [id for id in test_ids if id in pos_dict]
+    neg_test = [id for id in test_ids if id in neg_dict]
 
-    print(f"✅ Fold {fold_id} .pkl files saved to: {out_dir}")
+    print(f"\n[Fold {k}] Stats:")
+    print(f"  ✅ Pos train: {len(pos_train)}, Pos test: {len(pos_test)}")
+    print(f"  ✅ Neg train: {len(neg_train)}, Neg test: {len(neg_test)}")
+
+    # 构造实际 embedding 子集
+    pickle.dump(extract_subset(pos_dict, pos_train, "pos", k, "train"), open(f"{output_dir}/positivedata_k{k}.pkl", "wb"))
+    pickle.dump(extract_subset(pos_dict, pos_test,  "pos", k, "test"),  open(f"{output_dir}/positivedata_test_k{k}.pkl", "wb"))
+    pickle.dump(extract_subset(neg_dict, neg_train, "neg", k, "train"), open(f"{output_dir}/negativedata_k{k}.pkl", "wb"))
+    pickle.dump(extract_subset(neg_dict, neg_test,  "neg", k, "test"),  open(f"{output_dir}/negativedata_test_k{k}.pkl", "wb"))
+
+    print(f"✅ Fold {k} saved to: {output_dir}")
 
 if __name__ == "__main__":
+    # 读取已有 embedding
+    with open("esm2/positivedata549_esm2.pkl", "rb") as f:
+        pos_pkl = pickle.load(f)
+
+    with open("esm2/negativedata1670_esm2.pkl", "rb") as f:
+        neg_pkl = pickle.load(f)
+
     for k in range(1, 6):
-        build_fold_pkl(
-            fold_id=k,
-            pos_pkl_path="esm2/positivedata549_esm2.pkl",
-            neg_pkl_path="esm2/negativedata1670_esm2.pkl",
-            split_dir="data/train_test_seqname",
-            out_dir=f"esm2/fold{k}_pkl"
+        build_one_fold(
+            k=k,
+            pos_dict=pos_pkl,
+            neg_dict=neg_pkl,
+            txt_dir="data/train_test_seqname",
+            output_dir=f"esm2/fold{k}_pkl"
         )
