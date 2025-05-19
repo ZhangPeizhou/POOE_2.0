@@ -46,7 +46,7 @@ if __name__ == "__main__":
     for k in range(1, 6):
         build_fold_pkl(
             fold_id=k,
-            pos_pkl_path="esm2/positive549_esm2.pkl",
+            pos_pkl_path="esm2/positivedata549_esm2.pkl",
             neg_pkl_path="esm2/negativedata1670_esm2.pkl",
             split_dir="data/train_test_seqname",
             out_dir=f"esm2/fold{k}_pkl"
