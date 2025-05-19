@@ -1,99 +1,48 @@
-import argparse
 import os
-from Bio import SeqIO
-import torch
 import pickle
-import numpy as np
-from tqdm import tqdm
-import esm
 
-def preprocess_sequences(input_path, tmp_dir, max_len=1000):
-    os.makedirs(tmp_dir, exist_ok=True)
-    fasta_path = os.path.join(tmp_dir, "input_for_esm2.fasta")
-    seqs = {rec.id: str(rec.seq) for rec in SeqIO.parse(input_path, "fasta")}
+def load_seqnames(txt_file):
+    with open(txt_file) as f:
+        return [line.strip().replace(">", "") for line in f]
 
-    with open(fasta_path, "w") as f:
-        for k, v in seqs.items():
-            if len(v) > max_len:
-                for i in range(len(v) // max_len + 1):
-                    sub_v = v[i*max_len : (i+1)*max_len]
-                    if len(sub_v) == 0:
-                        continue
-                    sub_k = f"{k}__{i}_{len(sub_v)}"
-                    f.write(f">{sub_k}\n{sub_v}\n")
-            else:
-                f.write(f">{k}\n{v}\n")
-    return fasta_path
+def extract_subset(all_data, names):
+    missing = [n for n in names if n not in all_data]
+    if missing:
+        print(f"⚠️ {len(missing)} IDs not found in .pkl (showing 3): {missing[:3]}")
+    return [all_data[n] for n in names if n in all_data]
 
-def extract_embedding(fasta_file, tmp_dir):
-    model, alphabet = esm.pretrained.esm2_t33_650M_UR50D()
-    batch_converter = alphabet.get_batch_converter()
-    model.eval()
-    if torch.cuda.is_available():
-        model = model.cuda()
+def build_fold_pkl(fold_id, pos_pkl_path, neg_pkl_path, split_dir, out_dir):
+    os.makedirs(out_dir, exist_ok=True)
 
-    sequences = list(SeqIO.parse(fasta_file, "fasta"))
-    output_dir = os.path.join(tmp_dir, "out_esm2")
-    os.makedirs(output_dir, exist_ok=True)
+    with open(pos_pkl_path, "rb") as f:
+        pos_all = pickle.load(f)
+    with open(neg_pkl_path, "rb") as f:
+        neg_all = pickle.load(f)
 
-    for i in tqdm(range(len(sequences))):
-        name = sequences[i].id
-        seq = str(sequences[i].seq)
-        batch_labels, batch_strs, batch_tokens = batch_converter([(name, seq)])
-        if torch.cuda.is_available():
-            batch_tokens = batch_tokens.cuda()
-        with torch.no_grad():
-            results = model(batch_tokens, repr_layers=[33], return_contacts=False)
-        token_reps = results["representations"][33]
-        emb = token_reps[0, 1:len(seq)+1].mean(0).cpu().numpy()
+    # 正样本
+    pos_train_ids = load_seqnames(os.path.join(split_dir, f"x_train549_seqname_k{fold_id}.txt"))
+    pos_test_ids = load_seqnames(os.path.join(split_dir, f"x_test549_seqname_k{fold_id}.txt"))
 
-        torch.save({'mean_representations': {33: torch.tensor(emb)}}, os.path.join(output_dir, f"{name}.pt"))
+    # 负样本
+    neg_train_ids = load_seqnames(os.path.join(split_dir, f"x_train1670_seqname_k{fold_id}.txt"))
+    neg_test_ids = load_seqnames(os.path.join(split_dir, f"x_test1670_seqname_k{fold_id}.txt"))
 
-def merge_embedding(tmp_dir, output_file):
-    esm_dir = os.path.join(tmp_dir, "out_esm2")
-    ids = {}
-    for f_name in os.listdir(esm_dir):
-        if "__" in f_name:
-            k = f_name.split("__")[0]
-            ids.setdefault(k, []).append(f_name)
-        else:
-            ids[f_name.split(".pt")[0]] = [f_name]
-    for k in ids:
-        ids[k] = sorted(ids[k])
+    print(f"[Fold {fold_id}] Pos train: {len(pos_train_ids)}, test: {len(pos_test_ids)}")
+    print(f"[Fold {fold_id}] Neg train: {len(neg_train_ids)}, test: {len(neg_test_ids)}")
 
-    merged = {}
-    for k, files in tqdm(ids.items()):
-        if len(files) == 1:
-            vec = torch.load(os.path.join(esm_dir, files[0]))['mean_representations'][33].numpy()
-            merged[k] = vec
-        else:
-            vecs, lens = [], []
-            for f in files:
-                vec = torch.load(os.path.join(esm_dir, f))['mean_representations'][33].numpy()
-                length = int(f.split("__")[1].split("_")[1].split(".")[0])
-                vecs.append(vec)
-                lens.append(length)
-            weights = np.array(lens, dtype=np.float32)
-            weights = weights / weights.sum()
-            merged[k] = np.sum([w * v for w, v in zip(weights, vecs)], axis=0)
+    pickle.dump(extract_subset(pos_all, pos_train_ids), open(f"{out_dir}/positivedata_k{fold_id}.pkl", "wb"))
+    pickle.dump(extract_subset(pos_all, pos_test_ids), open(f"{out_dir}/positivedata_test_k{fold_id}.pkl", "wb"))
+    pickle.dump(extract_subset(neg_all, neg_train_ids), open(f"{out_dir}/negativedata_k{fold_id}.pkl", "wb"))
+    pickle.dump(extract_subset(neg_all, neg_test_ids), open(f"{out_dir}/negativedata_test_k{fold_id}.pkl", "wb"))
 
-    with open(output_file, "wb") as f:
-        pickle.dump(merged, f)
-
-def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("model_name")  # ignored
-    parser.add_argument("input_fasta")
-    parser.add_argument("tmp_dir")
-    parser.add_argument("--include", default="mean")
-    parser.add_argument("--repr_layers", default=33, type=int)
-    parser.add_argument("--truncation_seq_length", default=4000, type=int)
-    parser.add_argument("--save_file", required=True)
-    args = parser.parse_args()
-
-    fasta_path = preprocess_sequences(args.input_fasta, args.tmp_dir, max_len=args.truncation_seq_length)
-    extract_embedding(fasta_path, args.tmp_dir)
-    merge_embedding(args.tmp_dir, args.save_file)
+    print(f"✅ Fold {fold_id} .pkl files saved to: {out_dir}")
 
 if __name__ == "__main__":
-    main()
+    for k in range(1, 6):
+        build_fold_pkl(
+            fold_id=k,
+            pos_pkl_path="esm2/positive549_esm2.pkl",
+            neg_pkl_path="esm2/negativedata1670_esm2.pkl",
+            split_dir="data/train_test_seqname",
+            out_dir=f"esm2/fold{k}_pkl"
+        )
