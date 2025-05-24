@@ -6,12 +6,15 @@ from sklearn.metrics import (
     accuracy_score, precision_score, recall_score, f1_score,
     confusion_matrix, roc_auc_score, average_precision_score
 )
+from joblib import dump  # 新增：导入模型保存库
 import pandas as pd
 
 # ======================== 全局配置 ========================
 BASE_DIR = "/content/POOE_2.0"  # Colab根目录
 RESULT_DIR = os.path.join(BASE_DIR, "esm2/esm2_svm_results")
+MODEL_DIR = os.path.join(BASE_DIR, "esm2/saved_models")  # 新增：模型保存目录
 os.makedirs(RESULT_DIR, exist_ok=True)
+os.makedirs(MODEL_DIR, exist_ok=True)  # 新增：创建模型目录
 
 # ======================== 评估函数 ========================
 def multi_scores(y_true, y_prob, threshold=0.5):
@@ -103,6 +106,11 @@ def main():
         clf = svm.SVC(kernel="rbf", C=10, gamma=0.25, probability=True)
         clf.fit(X_train, y_train)
         
+        # ======================== 新增：保存模型 ========================
+        model_path = os.path.join(MODEL_DIR, f"svm_fold{fold_num}.joblib")
+        dump(clf, model_path)  # 使用joblib保存模型
+        print(f"   ✅ 模型已保存至: {model_path}")
+        
         # 预测与评估 ---------------------------------------------
         print("   Evaluating...")
         y_prob = clf.predict_proba(X_test)[:, 1]
@@ -125,7 +133,7 @@ def main():
         
         print(f"   ✅ Fold {fold_num}完成")
 
-    # ======================== 新版汇总输出 ========================
+    # ======================== 汇总输出 ========================
     if test_scores:
         print(f"\n{'='*40}\n🎉 5-Fold 汇总结果 (平均值 ± 标准差)")
         test_scores = np.array(test_scores)
