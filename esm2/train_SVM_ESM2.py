@@ -40,13 +40,13 @@ for i in range(1, 6):
 
     # ✔️ 加载数据
     
-    with open(os.path.join(fold_path, "positivedata_k{i}.pkl"), "rb") as f:
+    with open(os.path.join(fold_path, f"positivedata_k{i}.pkl"), "rb") as f::
         pos_train = pickle.load(f)
-    with open(os.path.join(fold_path, "positivedata_test_k{i}.pkl"), "rb") as f:
+    with open(os.path.join(fold_path, f"positivedata_test_k{i}.pkl"), "rb") as f:
         pos_test = pickle.load(f)
-    with open(os.path.join(fold_path, "negativedata_k{i}.pkl"), "rb") as f:
+    with open(os.path.join(fold_path, f"negativedata_k{i}.pkl"), "rb") as f:
         neg_train = pickle.load(f)
-    with open(os.path.join(fold_path, "negativedata_test_k{i}.pkl"), "rb") as f:
+    with open(os.path.join(fold_path, f1_score"negativedata_test_k{i}.pkl"), "rb") as f:
         neg_test = pickle.load(f)
 
     # ✔️ 构造训练集与测试集
