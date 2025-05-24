@@ -8,29 +8,43 @@ from sklearn.metrics import (
 )
 import pandas as pd
 
-# ✔️ 结果输出路径
+# ======================== 新增函数 ========================
+def multi_scores(y_true, y_prob, threshold=0.5, show=False):
+    y_pred = (y_prob >= threshold).astype(int)
+    
+    # 基础指标
+    TN, FP, FN, TP = confusion_matrix(y_true, y_pred).ravel()
+    PPV = precision_score(y_true, y_pred, zero_division=0)
+    TPR = recall_score(y_true, y_pred, zero_division=0)
+    TNR = TN / (TN + FP) if (TN + FP) > 0 else 0
+    Acc = accuracy_score(y_true, y_pred)
+    F1 = f1_score(y_true, y_pred, zero_division=0)
+    
+    # MCC 计算
+    denominator = np.sqrt((TP + FP) * (TP + FN) * (TN + FP) * (TN + FN))
+    MCC = (TP * TN - FP * FN) / denominator if denominator != 0 else 0
+    
+    # AUC 相关
+    AUROC = roc_auc_score(y_true, y_prob)
+    AUPRC = average_precision_score(y_true, y_prob)
+    
+    return [TP, TN, FP, FN, PPV, TPR, TNR, Acc, MCC, F1, AUROC, AUPRC]
+
+# ======================== 修改后的主逻辑 ========================
 result_dir = "esm2/esm2_svm_results"
 os.makedirs(result_dir, exist_ok=True)
 
-# ✔️ 需要的度量名称
-metric_names = ["TP", "TN", "FP", "FN", "PPV", "TPR", "TNR", "Acc", "MCC", "F1", "AUROC", "AUPRC"]
-test_scores = []
-
-# ✔️ 文件是否存在的检查函数
+# ✔️ 文件检查逻辑保持不变
 def all_fold_files_exist(fold_path):
-    required_files = [
-        "positivedata_k1.pkl",
-        "positivedata_test_k1.pkl",
-        "negativedata_k1.pkl",
-        "negativedata_test_k1.pkl"
-    ]
+    required_files = [f"positivedata_k{i}.pkl" for i in range(1,6)] + \
+                    [f"negativedata_k{i}.pkl" for i in range(1,6)]
     for f in required_files:
         if not os.path.isfile(os.path.join(fold_path, f)):
-            print(f"  ⛔ Missing: {f}")
             return False
     return True
 
-# ✔️ 开始 5-fold 训练与评估
+test_scores = []
+
 for i in range(1, 6):
     print(f"\n🟢 Fold {i} starting...")
     fold_path = f"esm2/fold{i}_pkl"
@@ -38,70 +52,54 @@ for i in range(1, 6):
         print(f"❌ Missing files for fold {i}, skipping.\n")
         continue
 
-    # ✔️ 加载数据
-    
-    with open(os.path.join(fold_path, f"positivedata_k{i}.pkl"), "rb") as f::
+    # ✔️ 数据加载保持不变
+    with open(os.path.join(fold_path, f"positivedata_k{i}.pkl"), "rb") as f:
         pos_train = pickle.load(f)
     with open(os.path.join(fold_path, f"positivedata_test_k{i}.pkl"), "rb") as f:
         pos_test = pickle.load(f)
     with open(os.path.join(fold_path, f"negativedata_k{i}.pkl"), "rb") as f:
         neg_train = pickle.load(f)
-    with open(os.path.join(fold_path, f1_score"negativedata_test_k{i}.pkl"), "rb") as f:
+    with open(os.path.join(fold_path, f"negativedata_test_k{i}.pkl"), "rb") as f:
         neg_test = pickle.load(f)
 
-    # ✔️ 构造训练集与测试集
+    # ✔️ 数据集构造保持不变
     X_train = list(pos_train.values()) + list(neg_train.values())
     y_train = [1] * len(pos_train) + [0] * len(neg_train)
     X_test = list(pos_test.values()) + list(neg_test.values())
     y_test = [1] * len(pos_test) + [0] * len(neg_test)
     test_ids = list(pos_test.keys()) + list(neg_test.keys())
 
-    # ✔️ 训练模型（可添加 class_weight="balanced"）
+    # ✔️ 训练逻辑保持不变
     clf = svm.SVC(kernel="rbf", C=10, gamma=0.25, probability=True)
     clf.fit(X_train, y_train)
+    
+    # ======================== 新评估方式 ========================
+    y_prob = clf.predict_proba(X_test)[:, 1]
+    test_score = multi_scores(y_test, y_prob, show=True)
+    test_scores.append(test_score)
+    
+    # ======================== 新输出格式 ========================
+    # 保存预测结果（改用制表符分隔）
+    with open(f"{result_dir}/test_pred_{i-1}.txt", "w") as f:
+        for idx, (true, prob) in enumerate(zip(y_test, y_prob)):
+            line = f"{test_ids[idx]}\t{true}\t{prob:.6f}\n"
+            f.write(line)
+    
+    # 保存指标结果（与trainning_SVM一致）
+    with open(f"{result_dir}/test_score_{i-1}.txt", "w") as f:
+        f.write("TP\tTN\tFP\tFN\tPPV\tTPR\tTNR\tAcc\tmcc\tf1\tAUROC\tAUPRC\n")
+        f.write("\t".join([f"{x:.4f}" for x in test_score]))
 
-    # ✔️ 预测与评估
-    y_pred_prob = clf.predict_proba(X_test)[:, 1]
-    y_pred = (y_pred_prob >= 0.5).astype(int)
-
-    TP = sum((y_test[i] == 1 and y_pred[i] == 1) for i in range(len(y_test)))
-    TN = sum((y_test[i] == 0 and y_pred[i] == 0) for i in range(len(y_test)))
-    FP = sum((y_test[i] == 0 and y_pred[i] == 1) for i in range(len(y_test)))
-    FN = sum((y_test[i] == 1 and y_pred[i] == 0) for i in range(len(y_test)))
-
-    PPV = precision_score(y_test, y_pred, zero_division=0)
-    TPR = recall_score(y_test, y_pred, zero_division=0)
-    TNR = TN / (TN + FP + 1e-6)
-    ACC = accuracy_score(y_test, y_pred)
-    MCC = np.corrcoef(y_test, y_pred)[0, 1] if TP + TN + FP + FN > 0 else 0
-    F1 = f1_score(y_test, y_pred, zero_division=0)
-    AUROC = roc_auc_score(y_test, y_pred_prob)
-    AUPRC = average_precision_score(y_test, y_pred_prob)
-
-    score = [TP, TN, FP, FN, PPV, TPR, TNR, ACC, MCC, F1, AUROC, AUPRC]
-    test_scores.append(score)
-
-    print(f"✅ Fold {i} done: Acc={ACC:.4f}, AUROC={AUROC:.4f}")
-
-    # ✔️ 保存预测结果
-    result_df = pd.DataFrame({
-        "Protein_ID": test_ids,
-        "Label": y_test,
-        "Pred_Prob": y_pred_prob
-    })
-    result_df.to_csv(f"{result_dir}/fold{i}_predictions.csv", index=False)
-
-# ✔️ 总结平均结果
+# ======================== 最终汇总输出 ========================
+print("\n5 fold average")
 test_scores = np.array(test_scores)
-mean = test_scores.mean(axis=0)
-std = test_scores.std(axis=0)
+fmat =  [1, 1, 1, 1, 3, 3, 3, 3, 3, 3, 3, 3]  # 控制小数位数
 
-print("\n🎉 All folds completed. Summary:")
-for name, m, s in zip(metric_names, mean, std):
-    print(f"{name}: {m:.4f} ± {s:.4f}")
+with open(f"{result_dir}/test_average_score.txt", "w") as f:
+    line1 = "TP\tTN\tFP\tFN\tPPV\tTPR\tTNR\tAcc\tmcc\tf1\tAUROC\tAUPRC\n"
+    line2 = "\t".join([f"{a:.{_}f}±{b:.{_}f}" 
+                      for (_, a, b) in zip(fmat, test_scores.mean(0), test_scores.std(0))])
+    f.write(line1)
+    f.write(line2)
 
-# ✔️ 保存总结果
-df_mean = pd.DataFrame([mean], columns=metric_names)
-df_std = pd.DataFrame([std], columns=metric_names)
-df_mean.to_csv(os.path.join(result_dir, "5fold_mean.csv"), index=False)
-df_std.to_csv(os.path.join(result_dir, "5fold_std.csv"), index=False)
+print("-----------------------------------")
