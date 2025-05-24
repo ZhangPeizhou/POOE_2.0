@@ -1,110 +1,107 @@
-
 import os
 import pickle
 import numpy as np
 from sklearn import svm
-from sklearn.metrics import roc_auc_score, precision_recall_curve, auc
-from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
-from sklearn.metrics import confusion_matrix
-from sklearn.metrics import matthews_corrcoef
+from sklearn.metrics import (
+    accuracy_score, precision_score, recall_score, f1_score,
+    confusion_matrix, roc_auc_score, average_precision_score
+)
+import pandas as pd
 
-def multi_scores(y_true, y_pred, show=False, threshold=0.5):
-    y_bin = (y_pred >= threshold).astype(int)
-    TP = ((y_true == 1) & (y_bin == 1)).sum()
-    TN = ((y_true == 0) & (y_bin == 0)).sum()
-    FP = ((y_true == 0) & (y_bin == 1)).sum()
-    FN = ((y_true == 1) & (y_bin == 0)).sum()
+# ✔️ 结果输出路径
+result_dir = "esm2/esm2_svm_results"
+os.makedirs(result_dir, exist_ok=True)
 
-    PPV = TP / (TP + FP + 1e-10)
-    TPR = TP / (TP + FN + 1e-10)
-    TNR = TN / (TN + FP + 1e-10)
-    ACC = (TP + TN) / (TP + TN + FP + FN + 1e-10)
-    F1 = 2 * PPV * TPR / (PPV + TPR + 1e-10)
-    MCC = (TP * TN - FP * FN) / (np.sqrt((TP+FP)*(TP+FN)*(TN+FP)*(TN+FN)) + 1e-10)
-    AUROC = roc_auc_score(y_true, y_pred)
-    precision, recall, _ = precision_recall_curve(y_true, y_pred)
-    AUPRC = auc(recall, precision)
-
-    scores = [TP, TN, FP, FN, PPV, TPR, TNR, ACC, MCC, F1, AUROC, AUPRC]
-
-    if show:
-        print("TP: %d, TN: %d, FP: %d, FN: %d" % (TP, TN, FP, FN))
-        print("PPV: %.4f, TPR: %.4f, TNR: %.4f, ACC: %.4f" % (PPV, TPR, TNR, ACC))
-        print("MCC: %.4f, F1: %.4f, AUROC: %.4f, AUPRC: %.4f" % (MCC, F1, AUROC, AUPRC))
-
-    return scores
-
-output_dir = "./results/5folds_ESM2"
-os.makedirs(output_dir, exist_ok=True)
-
+# ✔️ 需要的度量名称
+metric_names = ["TP", "TN", "FP", "FN", "PPV", "TPR", "TNR", "Acc", "MCC", "F1", "AUROC", "AUPRC"]
 test_scores = []
 
-for foldn in range(1, 6):
-    print(f"\n🟢 Fold {foldn} starting...")
+# ✔️ 文件是否存在的检查函数
+def all_fold_files_exist(fold_path):
+    required_files = [
+        "positivedata_k1.pkl",
+        "positivedata_test_k1.pkl",
+        "negativedata_k1.pkl",
+        "negativedata_test_k1.pkl"
+    ]
+    for f in required_files:
+        if not os.path.isfile(os.path.join(fold_path, f)):
+            print(f"  ⛔ Missing: {f}")
+            return False
+    return True
 
-    pos_train_path = f"esm2/fold{foldn}_pkl/positivedata_k{foldn}.pkl"
-    neg_train_path = f"esm2/fold{foldn}_pkl/negativedata_k{foldn}.pkl"
-    pos_test_path = f"esm2/fold{foldn}_pkl/positivedata_test_k{foldn}.pkl"
-    neg_test_path = f"esm2/fold{foldn}_pkl/negativedata_test_k{foldn}.pkl"
-
-    if not (os.path.exists(pos_train_path) and os.path.exists(neg_train_path) and os.path.exists(pos_test_path) and os.path.exists(neg_test_path)):
-        print(f"❌ Missing files for fold {foldn}, skipping.")
+# ✔️ 开始 5-fold 训练与评估
+for i in range(1, 6):
+    print(f"\n🟢 Fold {i} starting...")
+    fold_path = f"esm2/fold{i}_pkl"
+    if not all_fold_files_exist(fold_path):
+        print(f"❌ Missing files for fold {i}, skipping.\n")
         continue
 
-    with open(pos_train_path, "rb") as f:
+    # ✔️ 加载数据
+    
+    with open(os.path.join(fold_path, "positivedata_k{i}.pkl"), "rb") as f:
         pos_train = pickle.load(f)
-    with open(neg_train_path, "rb") as f:
-        neg_train = pickle.load(f)
-    with open(pos_test_path, "rb") as f:
+    with open(os.path.join(fold_path, "positivedata_test_k{i}.pkl"), "rb") as f:
         pos_test = pickle.load(f)
-    with open(neg_test_path, "rb") as f:
+    with open(os.path.join(fold_path, "negativedata_k{i}.pkl"), "rb") as f:
+        neg_train = pickle.load(f)
+    with open(os.path.join(fold_path, "negativedata_test_k{i}.pkl"), "rb") as f:
         neg_test = pickle.load(f)
 
-    def extract_xy(d, label):
-        X = list(d.values())
-        y = [label] * len(X)
-        return X, y
+    # ✔️ 构造训练集与测试集
+    X_train = list(pos_train.values()) + list(neg_train.values())
+    y_train = [1] * len(pos_train) + [0] * len(neg_train)
+    X_test = list(pos_test.values()) + list(neg_test.values())
+    y_test = [1] * len(pos_test) + [0] * len(neg_test)
+    test_ids = list(pos_test.keys()) + list(neg_test.keys())
 
-    X_pos_train, y_pos_train = extract_xy(pos_train, 1)
-    X_neg_train, y_neg_train = extract_xy(neg_train, 0)
-    X_pos_test, y_pos_test = extract_xy(pos_test, 1)
-    X_neg_test, y_neg_test = extract_xy(neg_test, 0)
+    # ✔️ 训练模型（可添加 class_weight="balanced"）
+    clf = svm.SVC(kernel="rbf", C=10, gamma=0.25, probability=True)
+    clf.fit(X_train, y_train)
 
-    X_train = np.array(X_pos_train + X_neg_train)
-    y_train = np.array(y_pos_train + y_neg_train)
-    X_test = np.array(X_pos_test + X_neg_test)
-    y_test = np.array(y_pos_test + y_neg_test)
+    # ✔️ 预测与评估
+    y_pred_prob = clf.predict_proba(X_test)[:, 1]
+    y_pred = (y_pred_prob >= 0.5).astype(int)
 
-    model = svm.SVC(C=10, gamma=0.25, kernel='rbf', probability=True)
-    model.fit(X_train, y_train)
-    y_test_pred = model.predict_proba(X_test)[:, 1]
+    TP = sum((y_test[i] == 1 and y_pred[i] == 1) for i in range(len(y_test)))
+    TN = sum((y_test[i] == 0 and y_pred[i] == 0) for i in range(len(y_test)))
+    FP = sum((y_test[i] == 0 and y_pred[i] == 1) for i in range(len(y_test)))
+    FN = sum((y_test[i] == 1 and y_pred[i] == 0) for i in range(len(y_test)))
 
-    test_score = multi_scores(y_test, y_test_pred, show=True)
-    test_scores.append(test_score)
+    PPV = precision_score(y_test, y_pred, zero_division=0)
+    TPR = recall_score(y_test, y_pred, zero_division=0)
+    TNR = TN / (TN + FP + 1e-6)
+    ACC = accuracy_score(y_test, y_pred)
+    MCC = np.corrcoef(y_test, y_pred)[0, 1] if TP + TN + FP + FN > 0 else 0
+    F1 = f1_score(y_test, y_pred, zero_division=0)
+    AUROC = roc_auc_score(y_test, y_pred_prob)
+    AUPRC = average_precision_score(y_test, y_pred_prob)
 
-    # 保存预测结果
-    with open(f"{output_dir}/test_pred_fold{foldn}.txt", "w") as f:
-        for idx in range(len(y_test)):
-            f.write(f"{y_test[idx]}\t{y_test_pred[idx]:.4f}\n")
+    score = [TP, TN, FP, FN, PPV, TPR, TNR, ACC, MCC, F1, AUROC, AUPRC]
+    test_scores.append(score)
 
-    # 保存指标
-    with open(f"{output_dir}/test_score_fold{foldn}.txt", "w") as f:
-        f.write("TP\tTN\tFP\tFN\tPPV\tTPR\tTNR\tACC\tMCC\tF1\tAUROC\tAUPRC\n")
-        f.write("\t".join([f"{x:.4f}" if isinstance(x, float) else str(x) for x in test_score]) + "\n")
+    print(f"✅ Fold {i} done: Acc={ACC:.4f}, AUROC={AUROC:.4f}")
 
-    print(f"✅ Fold {foldn} done: Acc={test_score[7]:.4f}, AUROC={test_score[10]:.4f}")
+    # ✔️ 保存预测结果
+    result_df = pd.DataFrame({
+        "Protein_ID": test_ids,
+        "Label": y_test,
+        "Pred_Prob": y_pred_prob
+    })
+    result_df.to_csv(f"{result_dir}/fold{i}_predictions.csv", index=False)
 
-# 计算平均值
+# ✔️ 总结平均结果
 test_scores = np.array(test_scores)
 mean = test_scores.mean(axis=0)
 std = test_scores.std(axis=0)
-metric_names = ["TP", "TN", "FP", "FN", "PPV", "TPR", "TNR", "ACC", "MCC", "F1", "AUROC", "AUPRC"]
-
-with open(f"{output_dir}/test_average_score.txt", "w") as f:
-    f.write("Metric\tMean\tStd\n")
-    for name, m, s in zip(metric_names, mean, std):
-        f.write(f"{name}\t{m:.4f}\t{s:.4f}\n")
 
 print("\n🎉 All folds completed. Summary:")
 for name, m, s in zip(metric_names, mean, std):
     print(f"{name}: {m:.4f} ± {s:.4f}")
+
+# ✔️ 保存总结果
+df_mean = pd.DataFrame([mean], columns=metric_names)
+df_std = pd.DataFrame([std], columns=metric_names)
+df_mean.to_csv(os.path.join(result_dir, "5fold_mean.csv"), index=False)
+df_std.to_csv(os.path.join(result_dir, "5fold_std.csv"), index=False)
