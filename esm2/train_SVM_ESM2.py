@@ -35,11 +35,16 @@ result_dir = "esm2/esm2_svm_results"
 os.makedirs(result_dir, exist_ok=True)
 
 # ✔️ 文件检查逻辑保持不变
-def all_fold_files_exist(fold_path):
-    required_files = [f"positivedata_k{i}.pkl" for i in range(1,6)] + \
-                    [f"negativedata_k{i}.pkl" for i in range(1,6)]
+def all_fold_files_exist(fold_path, current_fold):
+    required_files = [
+        f"positivedata_k{current_fold}.pkl",
+        f"positivedata_test_k{current_fold}.pkl",
+        f"negativedata_k{current_fold}.pkl",
+        f"negativedata_test_k{current_fold}.pkl"
+    ]
     for f in required_files:
         if not os.path.isfile(os.path.join(fold_path, f)):
+            print(f"  ⛔ Missing: {os.path.join(fold_path, f)}")
             return False
     return True
 
@@ -48,18 +53,18 @@ test_scores = []
 for i in range(1, 6):
     print(f"\n🟢 Fold {i} starting...")
     fold_path = f"esm2/fold{i}_pkl"
-    if not all_fold_files_exist(fold_path):
+    if not all_fold_files_exist(fold_path, fold_path):
         print(f"❌ Missing files for fold {i}, skipping.\n")
         continue
 
     # ✔️ 数据加载保持不变
-    with open(os.path.join(fold_path, f"positivedata_k{i}.pkl"), "rb") as f:
+    with open(os.path.join(i, f"positivedata_k{i}.pkl"), "rb") as f:
         pos_train = pickle.load(f)
-    with open(os.path.join(fold_path, f"positivedata_test_k{i}.pkl"), "rb") as f:
+    with open(os.path.join(i, f"positivedata_test_k{i}.pkl"), "rb") as f:
         pos_test = pickle.load(f)
-    with open(os.path.join(fold_path, f"negativedata_k{i}.pkl"), "rb") as f:
+    with open(os.path.join(i, f"negativedata_k{i}.pkl"), "rb") as f:
         neg_train = pickle.load(f)
-    with open(os.path.join(fold_path, f"negativedata_test_k{i}.pkl"), "rb") as f:
+    with open(os.path.join(i, f"negativedata_test_k{i}.pkl"), "rb") as f:
         neg_test = pickle.load(f)
 
     # ✔️ 数据集构造保持不变
