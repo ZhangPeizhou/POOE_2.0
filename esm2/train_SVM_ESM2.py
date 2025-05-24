@@ -118,33 +118,51 @@ def main():
         # 保存指标结果 -------------------------------------------
         score_file = os.path.join(RESULT_DIR, f"test_score_{fold_num-1}.txt")
         with open(score_file, "w") as f:
-            f.write("TP\tTN\tFP\tFN\tPPV\tTPR\tTNR\tAcc\tmcc\tf1\tAUROC\tAUPRC\n")
-            f.write("\t".join([f"{x:.4f}" for x in fold_scores]))
+            f.write("Metric\tValue\n")
+            metrics = ["TP", "TN", "FP", "FN", "PPV", "TPR", "TNR", "Acc", "mcc", "F1", "AUROC", "AUPRC"]
+            for name, value in zip(metrics, fold_scores):
+                f.write(f"{name}\t{value:.4f}\n")
         
-        print(f"   ✅ Fold {fold_num}完成: Acc={fold_scores[7]:.4f}, AUROC={fold_scores[10]:.4f}")
+        print(f"   ✅ Fold {fold_num}完成")
 
-    # 汇总结果 -------------------------------------------------
+    # ======================== 新版汇总输出 ========================
     if test_scores:
-        print(f"\n{'='*40}\n🎉 5-Fold汇总结果:")
+        print(f"\n{'='*40}\n🎉 5-Fold 汇总结果 (平均值 ± 标准差)")
         test_scores = np.array(test_scores)
-        fmat = [1, 1, 1, 1, 3, 3, 3, 3, 3, 3, 3, 3]  # 小数位数控制
         
+        # 指标定义 (名称，索引，整数位，小数位)
+        metrics = [
+            ("TP", 0, 4, 0),
+            ("TN", 1, 4, 0),
+            ("FP", 2, 4, 0),
+            ("FN", 3, 4, 0),
+            ("PPV", 4, 6, 4),
+            ("TPR", 5, 6, 4),
+            ("TNR", 6, 6, 4),
+            ("Acc", 7, 6, 4),
+            ("mcc", 8, 6, 4),
+            ("F1", 9, 6, 4),
+            ("AUROC", 10, 8, 4),
+            ("AUPRC", 11, 8, 4)
+        ]
+        
+        # 控制台输出
+        print("\n{:<8} | {:^16} | {:^16}".format("Metric", "Average", "Std"))
+        print("-"*45)
+        for name, idx, total_width, decimals in metrics:
+            mean = test_scores[:, idx].mean()
+            std = test_scores[:, idx].std()
+            mean_str = f"{mean:.{decimals}f}"
+            std_str = f"{std:.{decimals}f}"
+            print(f"{name:<8} | {mean_str:^{total_width}} | {std_str:^{total_width}}")
+
+        # 文件输出
         with open(os.path.join(RESULT_DIR, "test_average_score.txt"), "w") as f:
-            header = "TP\tTN\tFP\tFN\tPPV\tTPR\tTNR\tAcc\tmcc\tf1\tAUROC\tAUPRC\n"
-            f.write(header)
-            
-            mean_scores = test_scores.mean(axis=0)
-            std_scores = test_scores.std(axis=0)
-            
-            line = "\t".join([
-                f"{mean:.{decimals}f}±{std:.{decimals}f}"
-                for mean, std, decimals in zip(mean_scores, std_scores, fmat)
-            ])
-            f.write(line)
-            
-            # 控制台输出
-            print(header.strip())
-            print("\t".join([f"{x:.4f}" for x in mean_scores]))
+            f.write("Metric\tAverage\tStd\n")
+            for name, idx, _, decimals in metrics:
+                mean = test_scores[:, idx].mean()
+                std = test_scores[:, idx].std()
+                f.write(f"{name}\t{mean:.{decimals}f}\t{std:.{decimals}f}\n")
     else:
         print("\n⚠️ 无有效结果可汇总")
 
