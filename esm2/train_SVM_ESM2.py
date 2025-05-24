@@ -29,7 +29,7 @@ def load_pkl_features(pos_pkl, neg_pkl, label_pos=1, label_neg=0):
 for k in range(1, 6):
     print(f"\n🟢 Fold {k} starting...")
 
-    base_path = f"POOE_2.0/esm2/fold{k}_pkl"
+    base_path = f"./fold{k}_pkl"
     pos_train = f"{base_path}/positivedata_k{k}.pkl"
     pos_test = f"{base_path}/positivedata_test_k{k}.pkl"
     neg_train = f"{base_path}/negativedata_k{k}.pkl"
