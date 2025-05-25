@@ -75,5 +75,5 @@ if __name__ == "__main__":
         "data/additional_data/Additional_test_29.fasta",
         "data/additional_data/Additional_test_38.fasta" 
     ]
-    output_pkl = "esm2/output_by_fasta/additional_test_esm2.pkl"
+    output_pkl = "esm2/additional_test_esm2.pkl"
     extract_esm2_features(input_fastas, output_pkl)
