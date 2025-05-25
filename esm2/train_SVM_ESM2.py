@@ -124,7 +124,7 @@ def main():
         for name, idx, dec in metrics:
             mean = test_scores[:, idx].mean()
             std = test_scores[:, idx].std()
-            f.write(f"{name}\t{mean:.{dec}f}\t{std:.{dec}f\n")
+            f.write(f"{name}\t{mean:.{dec}f}\t{std:.{dec}f}\n")
 
 if __name__ == "__main__":
     main()
