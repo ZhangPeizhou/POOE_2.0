@@ -20,7 +20,7 @@ def extract_esm2_features(input_fastas, output_pkl):
     for fasta_path in input_fastas:
         for record in SeqIO.parse(fasta_path, "fasta"):
             name = record.id
-            seq = str(record.seq)
+            seq = str(record.seq).replace("*", "") 
             split_seqs = split_sequence(seq)
             full_lengths[name] = len(seq)
             for idx, chunk in enumerate(split_seqs):
