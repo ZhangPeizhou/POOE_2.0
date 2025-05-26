@@ -1,10 +1,10 @@
 import os
-import subprocess
 import torch
 import pickle
 from tqdm import tqdm
 from Bio import SeqIO
 from collections import defaultdict
+import esm
 
 def split_sequence(seq, chunk_size=1000):
     return [seq[i:i+chunk_size] for i in range(0, len(seq), chunk_size)]
@@ -13,58 +13,52 @@ def extract_esm2_features(input_fastas, output_pkl):
     tmp_folder = "esm2/tmp_additional"
     os.makedirs(tmp_folder, exist_ok=True)
 
-    chunks = defaultdict(list)
-    full_lengths = {}
+    # 加载模型
+    model, alphabet = esm.pretrained.esm2_t33_650M_UR50D()
+    model.eval()
+    batch_converter = alphabet.get_batch_converter()
 
-    # Step 1: Read sequences from all fasta files and split
+    chunks = defaultdict(list)
+    valid_aas = set("ACDEFGHIKLMNPQRSTVWY")  # 合法氨基酸
+
+    # Step 1: 读取序列，清洗，并分块
     for fasta_path in input_fastas:
         for record in SeqIO.parse(fasta_path, "fasta"):
             name = record.id
-            seq = str(record.seq).replace("*", "") 
+            raw_seq = str(record.seq)
+            seq = ''.join([aa for aa in raw_seq if aa in valid_aas])
+            if len(seq) == 0:
+                print(f"⚠️ Skipped empty or invalid sequence: {name}")
+                continue
             split_seqs = split_sequence(seq)
-            full_lengths[name] = len(seq)
             for idx, chunk in enumerate(split_seqs):
                 chunk_name = f"{name}_chunk{idx}"
-                chunks[name].append(chunk_name)
-                with open(os.path.join(tmp_folder, chunk_name + ".fasta"), "w") as f:
-                    f.write(f">{chunk_name}\n{chunk}\n")
+                chunks[name].append((chunk_name, chunk))
 
-    # Step 2: Extract embeddings for all chunks using ESM2
-    for chunk_list in tqdm(chunks.values(), desc="Extracting ESM2 embeddings"):
-        for chunk_name in chunk_list:
-            fasta_file = os.path.join(tmp_folder, chunk_name + ".fasta")
-            output_file = os.path.join(tmp_folder, chunk_name + ".pt")
-
-            subprocess.run([
-                "python", "esm/extract.py",
-                "facebook/esm2_t33_650M_UR50D",
-                fasta_file,
-                output_file,
-                "--repr_layers", "33",
-                "--include", "mean"
-            ], check=True)
-
-    # Step 3: Load and aggregate chunk embeddings
+    # Step 2: 提取 embedding
     feature_dict = {}
-    for name, chunk_list in chunks.items():
+    for name, chunk_list in tqdm(chunks.items(), desc="Extracting ESM2 embeddings"):
         embeddings = []
         weights = []
-        for chunk_name in chunk_list:
-            pt_file = os.path.join(tmp_folder, chunk_name + ".pt")
-            if not os.path.exists(pt_file):
-                continue
-            data = torch.load(pt_file)
-            rep = data["representations"][33].squeeze(0)
-            embeddings.append(rep)
-            weights.append(rep.shape[0])
-        if embeddings:
-            stacked = torch.stack(embeddings)
-            weights_tensor = torch.tensor(weights).float()
-            weights_tensor /= weights_tensor.sum()
-            weighted_avg = torch.sum(stacked * weights_tensor[:, None], dim=0)
-            feature_dict[name] = weighted_avg.detach().numpy()
+        batch_data = [(chunk_name, seq) for chunk_name, seq in chunk_list]
+        batch_labels, batch_strs, batch_tokens = batch_converter(batch_data)
 
-    # Step 4: Save final dictionary
+        with torch.no_grad():
+            results = model(batch_tokens, repr_layers=[33], return_contacts=False)
+        token_representations = results["representations"][33]
+
+        for i, (_, seq) in enumerate(batch_data):
+            rep = token_representations[i, 1:len(seq)+1].mean(0)
+            embeddings.append(rep)
+            weights.append(len(seq))
+
+        weights_tensor = torch.tensor(weights).float()
+        weights_tensor /= weights_tensor.sum()
+        stacked = torch.stack(embeddings)
+        weighted_avg = torch.sum(stacked * weights_tensor[:, None], dim=0)
+        feature_dict[name] = weighted_avg.numpy()
+
+    # Step 3: 保存输出
     with open(output_pkl, "wb") as f:
         pickle.dump(feature_dict, f)
 
