@@ -46,7 +46,7 @@ def load_fold_data(fold_num):
     for f in required_files:
         file_path = os.path.join(fold_path, f)
         if not os.path.isfile(file_path):
-            raise FileNotFoundError(f"⛔ 文件缺失: {file_path}")
+            raise FileNotFoundError(f"missing file: {file_path}")
     
     # 加载数据
     with open(os.path.join(fold_path, f"positivedata_k{fold_num}.pkl"), "rb") as f:
@@ -113,9 +113,9 @@ def main():
                 f.write("----------------|---------\n")
                 metrics = [
                     ("TP", 0, 0), ("TN", 1, 0), ("FP", 2, 0), ("FN", 3, 0),
-                    ("PPV", 4, 4), ("TPR", 5, 4), ("TNR", 6, 4),
-                    ("Acc", 7, 4), ("mcc", 8, 4), ("F1", 9, 4),
-                    ("AUROC", 10, 4), ("AUPRC", 11, 4)
+                    ("Precision", 4, 3), ("Recall", 5, 3), ("Specificity", 6, 3),
+                    ("Accuracy", 7, 3), ("Mcc", 8, 3), ("F1", 9, 3),
+                    ("AUROC", 10, 3), ("AUPRC", 11, 3)
                 ]
                 for name, idx, dec in metrics:
                     value = fold_scores[idx]
@@ -147,9 +147,9 @@ def main():
         print("{:<8} | {:^10} | {:^10}".format("Metric", "Mean", "Std"))
         print("----------------------------------")
         metrics = [
-            ("Precision", 4, 4), ("Recall", 5, 4), ("Specificity", 6, 4),
-            ("Accuracy", 7, 4), ("Mcc", 8, 4), ("F1", 9, 4),
-            ("AUROC", 10, 4), ("AUPRC", 11, 4)
+            ("Precision", 4, 3), ("Recall", 5, 3), ("Specificity", 6, 3),
+            ("Accuracy", 7, 3), ("Mcc", 8, 3), ("F1", 9, 3),
+            ("AUROC", 10, 3), ("AUPRC", 11, 3)
         ]
         for name, idx, dec in metrics:
             mean = test_scores[:, idx].mean()
