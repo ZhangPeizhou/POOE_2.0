@@ -78,7 +78,7 @@ def main():
     # Phase 1: 5-fold交叉验证
     for fold_num in range(1, 6):
         try:
-            print(f"\n{'='*40}\n🟢 Cross-Validation Fold {fold_num}")
+            print(f"\n{'='*40}\n Cross-Validation Fold {fold_num}")
             pos_train, pos_test, neg_train, neg_test = load_fold_data(fold_num)
             
             # 构建数据集
@@ -120,35 +120,35 @@ def main():
                 for name, idx, dec in metrics:
                     value = fold_scores[idx]
                     f.write(f"{name:<15} | {value:.{dec}f}\n")
-            print(f"✅ Fold {fold_num} 结果保存至:")
-            print(f"   - 预测文件: {pred_file}")
-            print(f"   - 评估文件: {score_file}")
+            print(f" Fold {fold_num} result saved at:")
+            print(f"   - predict: {pred_file}")
+            print(f"   - evaluate: {score_file}")
             
         except Exception as e:
-            print(f"🔴 Fold {fold_num} 失败: {str(e)}")
+            print(f" Fold {fold_num} fail: {str(e)}")
             continue
     
     # Phase 2: 训练最终模型
     try:
-        print("\n{'='*40}\n🟢 Training Final Model")
+        print("\n{'='*40}\n Training Final Model")
         X_all, y_all = load_all_train_data()
         final_model = svm.SVC(kernel="rbf", C=10, gamma=0.25, probability=True)
         final_model.fit(X_all, y_all)
         model_path = os.path.join(MODEL_DIR, "svm_final.joblib")
         dump(final_model, model_path)
-        print(f"✅ 最终模型保存至: {model_path}")
+        print(f" Final model saved at: {model_path}")
     except Exception as e:
-        print(f"🔴 最终模型训练失败: {str(e)}")
+        print(f" Failed: {str(e)}")
     
     # Phase 3: 汇总结果
     if test_scores:
         test_scores = np.array(test_scores)
-        print(f"\n{'='*40}\n📊 5-Fold 汇总结果 (平均值 ± 标准差)")
+        print(f"\n{'='*40}\n 5-Fold Summery ")
         print("{:<8} | {:^10} | {:^10}".format("Metric", "Mean", "Std"))
         print("----------------------------------")
         metrics = [
-            ("PPV", 4, 4), ("TPR", 5, 4), ("TNR", 6, 4),
-            ("Acc", 7, 4), ("mcc", 8, 4), ("F1", 9, 4),
+            ("Precision", 4, 4), ("Recall", 5, 4), ("Specificity", 6, 4),
+            ("Accuracy", 7, 4), ("Mcc", 8, 4), ("F1", 9, 4),
             ("AUROC", 10, 4), ("AUPRC", 11, 4)
         ]
         for name, idx, dec in metrics:
@@ -164,7 +164,7 @@ def main():
                 mean = test_scores[:, idx].mean()
                 std = test_scores[:, idx].std()
                 f.write(f"{name}\t{mean:.{dec}f}\t{std:.{dec}f}\n")
-        print(f"\n✅ 汇总结果保存至: {summary_file}")
+        print(f"\n Evaluation Saved at: {summary_file}")
 
 if __name__ == "__main__":
     main()
