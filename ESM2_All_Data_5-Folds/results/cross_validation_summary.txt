@@ -1,0 +1,9 @@
+Metric	Mean	Std
+Precision	0.889	0.011
+Recall	0.847	0.007
+Specificity	0.965	0.004
+Accuracy	0.935	0.004
+Mcc	0.825	0.012
+F1	0.867	0.009
+AUROC	0.963	0.003
+AUPRC	0.923	0.011

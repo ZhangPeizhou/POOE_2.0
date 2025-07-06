@@ -1,0 +1,14 @@
+Metric          | Value
+----------------|---------
+TP              | 153
+TN              | 524
+FP              | 18
+FN              | 27
+Precision       | 0.895
+Recall          | 0.850
+Specificity     | 0.967
+Accuracy        | 0.938
+Mcc             | 0.831
+F1              | 0.872
+AUROC           | 0.961
+AUPRC           | 0.925
