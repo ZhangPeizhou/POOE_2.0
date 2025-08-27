@@ -73,17 +73,19 @@ def multi_scores(y_true, y_prob, thr=0.5):
     )
 
 def make_cat_model(scale_pos_weight=1.0):
-    # GPU 固定启用；使用 Bernoulli 抽样以允许 subsample 参数
+    # GPU：限制显存占比，固定 Bernoulli 才能用 subsample
     return CatBoostClassifier(
         task_type="GPU", devices="0",
         loss_function="Logloss", eval_metric="AUC",
         random_seed=RANDOM_STATE,
-        iterations=1000,              # CV 阶段不早停
-        learning_rate=0.05, depth=8,
+        iterations=800,               # CV 阶段上限，避免太大
+        learning_rate=0.05,
+        depth=8,
         l2_leaf_reg=3.0,
-        bootstrap_type="Bernoulli",   # ← 关键：允许 subsample
-        subsample=0.8,                # 初始值，搜索时会被覆盖
+        bootstrap_type="Bernoulli",
+        subsample=0.8,
         rsm=0.8,
+        gpu_ram_part=0.30,            # 关键：最多用 30% 显存
         scale_pos_weight=scale_pos_weight,
         verbose=False
     )
@@ -108,30 +110,31 @@ def main():
         Xte = pad_or_truncate(Xte_raw, max_len)
         ids_test = list(pos_te.keys()) + list(neg_te.keys())
 
-        # 不平衡：给 scale_pos_weight 候选
+        # 不平衡：scale_pos_weight 候选
         pos_cnt = (ytr == 1).sum(); neg_cnt = (ytr == 0).sum()
         ratio = (neg_cnt / max(1, pos_cnt))
         spw_cands = [1.0, 0.5*ratio, ratio, 1.5*ratio]
 
-        # 随机搜索空间
+        # 搜索空间（收敛更快、更省显存）
         param_dist = {
-            "learning_rate": [0.02, 0.05, 0.1],
-            "depth": [6, 8, 10],
+            "learning_rate": [0.03, 0.05, 0.1],
+            "depth": [6, 8],
             "l2_leaf_reg": [1.0, 3.0, 5.0, 10.0],
             "subsample": [0.7, 0.8, 1.0],
             "rsm": [0.6, 0.8, 1.0],
             "scale_pos_weight": spw_cands,
-            "iterations": [800, 1000, 1400]
+            "iterations": [600, 800, 1000]
         }
 
         search = RandomizedSearchCV(
             estimator=make_cat_model(),
             param_distributions=param_dist,
-            n_iter=20,
+            n_iter=18,
             scoring="average_precision",
             cv=CV_INNER,
             random_state=RANDOM_STATE,
-            n_jobs=-1,
+            n_jobs=1,                   # 关键：避免并行占满显存
+            pre_dispatch="1*n_jobs",
             refit=True
         )
         search.fit(Xtr, ytr)
@@ -174,11 +177,12 @@ def main():
     global_search = RandomizedSearchCV(
         estimator=make_cat_model(),
         param_distributions=param_dist,
-        n_iter=30,
+        n_iter=24,
         scoring="average_precision",
         cv=CV_INNER,
         random_state=RANDOM_STATE,
-        n_jobs=-1,
+        n_jobs=1,                   # 同样避免并行争抢显存
+        pre_dispatch="1*n_jobs",
         refit=True
     )
     global_search.fit(X_all, y_all)
@@ -192,9 +196,9 @@ def main():
     final_model = make_cat_model(scale_pos_weight=best_params.get("scale_pos_weight", 1.0))
     for k,v in best_params.items():
         final_model.set_params(**{k: v})
-    # 给早停留空间
-    if final_model.get_param("iterations") < 1400:
-        final_model.set_params(iterations=1400)
+    # 给早停留空间，但别太大以免占显存
+    if final_model.get_param("iterations") < 1200:
+        final_model.set_params(iterations=1200)
 
     final_model.fit(
         Pool(X_tr, y_tr),
