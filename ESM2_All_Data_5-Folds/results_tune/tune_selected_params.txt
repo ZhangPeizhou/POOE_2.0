@@ -1,0 +1,7 @@
+Representative params from outer test:
+{'svc__C': np.float64(84.31013932082456), 'svc__class_weight': None, 'svc__gamma': np.float64(0.003387255565852149)}
+
+Global best params via inner CV on all training data:
+{'svc__C': np.float64(84.31013932082456), 'svc__class_weight': None, 'svc__gamma': np.float64(0.003387255565852149)}
+
+Global best cv (avg_precision): 0.999971
