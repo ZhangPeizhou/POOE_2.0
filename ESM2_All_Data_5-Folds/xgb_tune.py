@@ -20,7 +20,7 @@ os.makedirs(MODEL_DIR,  exist_ok=True)
 RANDOM_STATE = 42
 CV_INNER = StratifiedKFold(n_splits=3, shuffle=True, random_state=RANDOM_STATE)
 
-# 外部测试路径（若不存在会自动跳过）
+# 外部测试路径
 EFF_POS = "/content/POOE_2.0/EffectorP-3.0-Data/TestData_Embedding_ESM2/positivedata_external_test.pkl"
 EFF_NEG = "/content/POOE_2.0/EffectorP-3.0-Data/TestData_Embedding_ESM2/negativedata_external_test.pkl"
 FUN_POS = "/content/POOE_2.0/Fungtion-Data/Fungtion_Independent_Embedding_ESM2/positivedata_fungtion.pkl"
@@ -73,7 +73,6 @@ def multi_scores(y_true, y_prob, thr=0.5):
     )
 
 def gpu_available_for_xgb():
-    # 粗略判断：若报错会在 fit 时自动回退
     try:
         _ = xgb.core._has_cuda_context()
         return True
@@ -85,38 +84,25 @@ def make_xgb_classifier(scale_pos_weight=1.0, use_gpu=True):
     predictor = "gpu_predictor" if use_gpu else "auto"
     return xgb.XGBClassifier(
         objective="binary:logistic",
-        eval_metric="aucpr",          # 以 PR-AUC 为主
+        eval_metric="aucpr",
         tree_method=tree_method,
         predictor=predictor,
         random_state=RANDOM_STATE,
-        n_estimators=600,             # 无早停时的默认上限
+        n_estimators=600,
         verbosity=0,
         scale_pos_weight=scale_pos_weight,
-        # 其余参数由搜索空间覆盖
     )
-
-# ==================== 超参搜索空间（随机搜索） ====================
-def build_param_dist(pos_weight_candidates):
-    return {
-        "learning_rate": [0.02, 0.05, 0.1],
-        "max_depth": [3, 5, 7, 9],
-        "min_child_weight": [1, 2, 5, 10],
-        "gamma": [0.0, 0.1, 0.3],
-        "subsample": [0.6, 0.8, 1.0],
-        "colsample_bytree": [0.6, 0.8, 1.0],
-        "reg_alpha": [0.0, 1e-2, 1e-1, 1.0],
-        "reg_lambda": [0.5, 1.0, 2.0, 5.0],
-        "scale_pos_weight": pos_weight_candidates,  # 针对不平衡
-        "n_estimators": [400, 600, 800, 1000],      # 在内层CV里先不做早停
-    }
 
 # ==================== 主流程 ====================
 def main():
     use_gpu = gpu_available_for_xgb()
+    print("=== XGBoost 调参开始 ===")
+    print(f"GPU 可用: {use_gpu}")
 
-    # ---------- 外层5折：每折做“随机搜索”，在该折测试集上评估 ----------
+    # ---------- 外层5折 ----------
     per_fold_rows = []
     for k in range(1, 6):
+        print(f"\n>>> 开始第{k}折")
         pos_tr, pos_te, neg_tr, neg_te = load_fold_data(k)
         Xtr_raw = list(pos_tr.values()) + list(neg_tr.values())
         ytr = np.array([1]*len(pos_tr) + [0]*len(neg_tr), dtype=int)
@@ -129,46 +115,52 @@ def main():
         Xte = pad_or_truncate(Xte_raw, max_len)
         ids_test = list(pos_te.keys()) + list(neg_te.keys())
 
-        # 针对该折训练集的不平衡，给出候选 scale_pos_weight
         pos_cnt = (ytr == 1).sum(); neg_cnt = (ytr == 0).sum()
         ratio = (neg_cnt / max(1, pos_cnt))
         spw_cands = [1.0, 0.5*ratio, ratio, 1.5*ratio]
 
-        xgb_base = make_xgb_classifier(use_gpu=use_gpu)
+        param_dist = {
+            "learning_rate": [0.02, 0.05, 0.1],
+            "max_depth": [3, 5, 7, 9],
+            "min_child_weight": [1, 2, 5, 10],
+            "gamma": [0.0, 0.1, 0.3],
+            "subsample": [0.6, 0.8, 1.0],
+            "colsample_bytree": [0.6, 0.8, 1.0],
+            "scale_pos_weight": spw_cands,
+            "n_estimators": [400, 600, 800]
+        }
+
         search = RandomizedSearchCV(
-            estimator=xgb_base,
-            param_distributions=build_param_dist(spw_cands),
-            n_iter=32,
+            estimator=make_xgb_classifier(use_gpu=use_gpu),
+            param_distributions=param_dist,
+            n_iter=20,
             scoring="average_precision",
             cv=CV_INNER,
             random_state=RANDOM_STATE,
             n_jobs=-1,
-            verbose=0,
             refit=True
         )
         search.fit(Xtr, ytr)
+        print(f"Fold{k} 内层最佳 AUPRC={search.best_score_:.4f}, 参数={search.best_params_}")
 
         yprob = search.predict_proba(Xte)[:, 1]
-        scores = multi_scores(yte, yprob, thr=0.5)
+        scores = multi_scores(yte, yprob)
+        print(f"Fold{k} 外层测试集 AUPRC={scores['AUPRC']:.4f}, AUROC={scores['AUROC']:.4f}")
 
         row = {"Fold": k, **scores, "inner_best_cv_avg_precision": float(search.best_score_)}
-        for p, v in search.best_params_.items():
-            row[f"param_{p}"] = v
         per_fold_rows.append(row)
 
-        # 保存每折预测
         pd.DataFrame({"Protein_ID": ids_test, "Label": yte, "Pred_Prob": yprob}).to_csv(
             os.path.join(RESULT_DIR, f"xgb_fold{k}_pred.csv"), index=False
         )
 
     df = pd.DataFrame(per_fold_rows)
     df.to_csv(os.path.join(RESULT_DIR, "xgb_outerfold_scores.csv"), index=False)
-    df[["AUPRC","AUROC","Precision","Recall","F1","MCC","Accuracy","Specificity"]].agg(["mean","std"]).to_csv(
-        os.path.join(RESULT_DIR, "xgb_outerfold_summary.csv")
-    )
+    print("\n=== 外层5折完成 ===")
+    print(df[["Fold","AUPRC","AUROC","Precision","Recall","F1"]])
 
-    # ---------- 全量训练：再次随机搜索 → 用早停训练最终模型 ----------
-    # 组装全量训练集 & 特征长度
+    # ---------- 全量训练 ----------
+    print("\n>>> 开始全量训练 (随机搜索+早停)")
     final_len = 0
     all_pos, all_neg = [], []
     for k in range(1, 6):
@@ -183,86 +175,64 @@ def main():
     ratio = (neg_cnt / max(1, pos_cnt))
     spw_cands = [1.0, 0.5*ratio, ratio, 1.5*ratio]
 
-    xgb_base = make_xgb_classifier(use_gpu=use_gpu)
+    param_dist["scale_pos_weight"] = spw_cands
     global_search = RandomizedSearchCV(
-        estimator=xgb_base,
-        param_distributions=build_param_dist(spw_cands),
-        n_iter=48,
+        estimator=make_xgb_classifier(use_gpu=use_gpu),
+        param_distributions=param_dist,
+        n_iter=30,
         scoring="average_precision",
         cv=CV_INNER,
         random_state=RANDOM_STATE,
         n_jobs=-1,
-        verbose=0,
         refit=True
     )
     global_search.fit(X_all, y_all)
     best_params = global_search.best_params_
+    print(f"全量随机搜索最佳 AUPRC={global_search.best_score_:.4f}, 参数={best_params}")
 
-    # 用早停训练最终模型（从全量训练中留出 10% 做 valid）
     X_tr, X_val, y_tr, y_val = train_test_split(
         X_all, y_all, test_size=0.1, random_state=RANDOM_STATE, stratify=y_all
     )
-    final_model = make_xgb_classifier(
-        use_gpu=use_gpu,
-        scale_pos_weight=best_params.get("scale_pos_weight", 1.0)
-    )
-    # 将其它最优超参写入
-    for k, v in best_params.items():
-        if k != "scale_pos_weight":
-            setattr(final_model, k, v)
+    final_model = make_xgb_classifier(use_gpu=use_gpu, scale_pos_weight=best_params.get("scale_pos_weight", 1.0))
+    for k,v in best_params.items():
+        setattr(final_model, k, v)
+    final_model.set_params(n_estimators=max(800, best_params.get("n_estimators",800)))
 
-    final_model.set_params(n_estimators=max(800, best_params.get("n_estimators", 800)))  # 给早停充足上限
-    final_model.fit(
-        X_tr, y_tr,
-        eval_set=[(X_val, y_val)],
-        verbose=False,
-        early_stopping_rounds=100
-    )
+    final_model.fit(X_tr, y_tr, eval_set=[(X_val,y_val)], early_stopping_rounds=100, verbose=False)
+    print(f"最终模型 early_stop 迭代轮数={final_model.best_iteration_}")
 
-    # 保存最终模型
     model_path = os.path.join(MODEL_DIR, "xgb_final_tuned.joblib")
     dump(final_model, model_path)
+    print(f"最终模型已保存: {model_path}")
 
-    # 记录参数与摘要
-    with open(os.path.join(RESULT_DIR, "xgb_selected_params.txt"), "w") as f:
-        f.write(f"USE_GPU={use_gpu}\n")
-        f.write("[Global best params (Randomized CV)]\n")
-        f.write(str(best_params) + "\n")
-        f.write(f"Global best CV (avg_precision): {float(global_search.best_score_):.6f}\n")
-        f.write(f"Final feature length used: {final_len}\n")
-        f.write(f"Best n_estimators used (early-stopped): {final_model.best_iteration_ if hasattr(final_model,'best_iteration_') else 'N/A'}\n")
-
-    # ---------- 可选：外部测试（未配平 & 1:3固定），保存 y_true/y_prob ----------
+    # ---------- 外部测试 ----------
     def safe_load(path):
         try:
             with open(path, "rb") as f: return pickle.load(f)
         except Exception:
             return None
 
-    # 未配平外测
-    objs = [safe_load(EFF_POS), safe_load(EFF_NEG), safe_load(FUN_POS), safe_load(FUN_NEG)]
-    if all(o is not None for o in objs):
-        X_pos = flatten_list_or_dict(objs[0]) + flatten_list_or_dict(objs[2])
-        X_neg = flatten_list_or_dict(objs[1]) + flatten_list_or_dict(objs[3])
-        X_ext = pad_or_truncate(X_pos + X_neg, final_len)
-        y_ext = np.array([1]*len(X_pos) + [0]*len(X_neg), dtype=int)
-        yprob_ext = final_model.predict_proba(X_ext)[:, 1]
-        np.save(os.path.join(RESULT_DIR, "xgb_external_unbalanced_ytrue.npy"), y_ext)
-        np.save(os.path.join(RESULT_DIR, "xgb_external_unbalanced_yprob.npy"), yprob_ext)
+    for tag, pos_path, neg_path in [
+        ("unbalanced", [EFF_POS,FUN_POS], [EFF_NEG,FUN_NEG]),
+        ("1to3", [BAL_POS], [BAL_NEG])
+    ]:
+        pos_objs, neg_objs = [], []
+        for p in pos_path: 
+            obj = safe_load(p); 
+            if obj is not None: pos_objs.extend(flatten_list_or_dict(obj))
+        for p in neg_path: 
+            obj = safe_load(p); 
+            if obj is not None: neg_objs.extend(flatten_list_or_dict(obj))
+        if not pos_objs or not neg_objs: 
+            continue
+        X_ext = pad_or_truncate(pos_objs + neg_objs, final_len)
+        y_ext = np.array([1]*len(pos_objs) + [0]*len(neg_objs), dtype=int)
+        yprob_ext = final_model.predict_proba(X_ext)[:,1]
         sc = multi_scores(y_ext, yprob_ext)
-        pd.DataFrame([sc]).to_csv(os.path.join(RESULT_DIR, "xgb_external_unbalanced_scores.csv"), index=False)
-
-    # 1:3 固定外测
-    objs2 = [safe_load(BAL_POS), safe_load(BAL_NEG)]
-    if all(o is not None for o in objs2):
-        Xp = flatten_list_or_dict(objs2[0]); Xn = flatten_list_or_dict(objs2[1])
-        X_bal = pad_or_truncate(Xp + Xn, final_len)
-        y_bal = np.array([1]*len(Xp) + [0]*len(Xn), dtype=int)
-        yprob_bal = final_model.predict_proba(X_bal)[:, 1]
-        np.save(os.path.join(RESULT_DIR, "xgb_external_1to3_ytrue.npy"), y_bal)
-        np.save(os.path.join(RESULT_DIR, "xgb_external_1to3_yprob.npy"), yprob_bal)
-        sc2 = multi_scores(y_bal, yprob_bal)
-        pd.DataFrame([sc2]).to_csv(os.path.join(RESULT_DIR, "xgb_external_1to3_scores.csv"), index=False)
+        print(f"\n外部测试 {tag}: Precision={sc['Precision']:.3f}, Recall={sc['Recall']:.3f}, AUPRC={sc['AUPRC']:.3f}")
+        np.save(os.path.join(RESULT_DIR, f"xgb_external_{tag}_ytrue.npy"), y_ext)
+        np.save(os.path.join(RESULT_DIR, f"xgb_external_{tag}_yprob.npy"), yprob_ext)
+        pd.DataFrame([sc]).to_csv(os.path.join(RESULT_DIR, f"xgb_external_{tag}_scores.csv"), index=False)
 
 if __name__ == "__main__":
     main()
