@@ -73,14 +73,17 @@ def multi_scores(y_true, y_prob, thr=0.5):
     )
 
 def make_cat_model(scale_pos_weight=1.0):
-    # GPU 固定启用；AUPRC 在外侧用 sklearn 计算
+    # GPU 固定启用；使用 Bernoulli 抽样以允许 subsample 参数
     return CatBoostClassifier(
         task_type="GPU", devices="0",
         loss_function="Logloss", eval_metric="AUC",
         random_seed=RANDOM_STATE,
         iterations=1000,              # CV 阶段不早停
         learning_rate=0.05, depth=8,
-        l2_leaf_reg=3.0, subsample=0.8, rsm=0.8,
+        l2_leaf_reg=3.0,
+        bootstrap_type="Bernoulli",   # ← 关键：允许 subsample
+        subsample=0.8,                # 初始值，搜索时会被覆盖
+        rsm=0.8,
         scale_pos_weight=scale_pos_weight,
         verbose=False
     )
