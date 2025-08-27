@@ -1,9 +1,7 @@
 # -*- coding: utf-8 -*-
 import os, pickle, warnings, numpy as np, pandas as pd
 from joblib import dump
-from sklearn.model_selection import (
-    StratifiedKFold, RandomizedSearchCV, GridSearchCV
-)
+from sklearn.model_selection import StratifiedKFold, RandomizedSearchCV, GridSearchCV
 from sklearn.metrics import (
     accuracy_score, precision_score, recall_score, f1_score,
     confusion_matrix, roc_auc_score, average_precision_score, matthews_corrcoef
@@ -94,23 +92,15 @@ def multi_scores(y_true, y_prob, thr=0.5):
 # ==================== 调参器：粗搜 & 精网格 ====================
 def make_base_rf():
     if USING_CUML:
-        # cuML RF (GPU)
-        return RFClass(
-            random_state=RANDOM_STATE,
-            n_estimators=200
-        )
+        # cuML RF（GPU）——仅传基础参数（不同版本API差异大，避免不支持的关键字）
+        return RFClass(random_state=RANDOM_STATE, n_estimators=200)
     else:
-        # sklearn RF (CPU)
-        return RFClass(
-            random_state=RANDOM_STATE,
-            n_estimators=200,
-            n_jobs=-1
-        )
+        # sklearn RF（CPU）
+        return RFClass(random_state=RANDOM_STATE, n_estimators=200, n_jobs=-1)
 
 def coarse_search():
-    # 粗搜空间：覆盖广一点
+    # 粗搜空间（注意：Halving 时不能把 n_estimators 放进搜索空间）
     param_distributions = {
-        "n_estimators": [200, 400, 600, 800, 1000],
         "max_depth": [None, 10, 20, 40],
         "min_samples_split": [2, 5, 10],
         "min_samples_leaf": [1, 2, 4],
@@ -121,8 +111,8 @@ def coarse_search():
         return HalvingRandomSearchCV(
             estimator=base,
             param_distributions=param_distributions,
-            factor=3,                       # 每轮保留 1/factor
-            resource="n_estimators",        # 用树数作为“资源”
+            factor=3,
+            resource="n_estimators",   # 以树数为“资源”
             min_resources=200,
             max_resources=1000,
             scoring="average_precision",
@@ -133,6 +123,8 @@ def coarse_search():
             refit=True
         )
     else:
+        # 无 halving：退回随机搜索；此时可以把 n_estimators 也放入搜索空间
+        param_distributions["n_estimators"] = [200, 400, 600, 800, 1000]
         return RandomizedSearchCV(
             estimator=base,
             param_distributions=param_distributions,
@@ -146,39 +138,30 @@ def coarse_search():
         )
 
 def build_small_grid(around_best: dict):
-    # 围绕 coarse 的 best_params 做“小网格”
+    # 围绕 coarse 的最优结果构建“小网格”（HalvingGrid 下同样不包含 n_estimators）
     def neigh(val, candidates):
-        # 如果 val 在候选里就用原集合；否则把 val 合并进去
         vals = list(candidates)
-        if val not in vals:
-            vals.append(val)
-        # 去重后排序（混合类型时保持原顺序）
-        try:
-            return sorted(set(vals))
-        except Exception:
-            return list(dict.fromkeys(vals))
-
-    grid = {
-        "n_estimators":  neigh(around_best.get("n_estimators", 600), [400, 600, 800, 1000]),
-        "max_depth":     neigh(around_best.get("max_depth", 20),     [None, 10, 20, 40]),
+        if val not in vals: vals.append(val)
+        try: return sorted(set(vals))
+        except Exception: return list(dict.fromkeys(vals))
+    return {
+        "max_depth":         neigh(around_best.get("max_depth", 20), [None, 10, 20, 40]),
         "min_samples_split": neigh(around_best.get("min_samples_split", 2), [2, 5, 10]),
-        "min_samples_leaf":  neigh(around_best.get("min_samples_leaf", 1),  [1, 2, 4]),
-        "max_features":  neigh(around_best.get("max_features", "sqrt"), ["sqrt", "log2", 1.0]),
+        "min_samples_leaf":  neigh(around_best.get("min_samples_leaf", 1), [1, 2, 4]),
+        "max_features":      neigh(around_best.get("max_features", "sqrt"), ["sqrt", "log2", 1.0]),
     }
-    return grid
 
 def fine_search(small_grid):
-    base = RFClass(
-        random_state=RANDOM_STATE,
-        n_streams=1 if USING_CUML else None,
-        n_jobs=-1 if not USING_CUML else None
-    )
     if HALVING_OK:
+        # HalvingGrid：资源还是 n_estimators，网格不含它
+        base = make_base_rf()
         return HalvingGridSearchCV(
             estimator=base,
             param_grid=small_grid,
             factor=3,
             resource="n_estimators",
+            min_resources=200,
+            max_resources=1000,
             scoring="average_precision",
             cv=CV_INNER,
             n_jobs=-1,
@@ -186,9 +169,13 @@ def fine_search(small_grid):
             refit=True
         )
     else:
+        # 普通 Grid：这里把 n_estimators 一起微调
+        base = RFClass(random_state=RANDOM_STATE, n_jobs=-1) if not USING_CUML else RFClass(random_state=RANDOM_STATE)
+        small_grid_with_ne = dict(small_grid)
+        small_grid_with_ne["n_estimators"] = [400, 600, 800, 1000]
         return GridSearchCV(
             estimator=base,
-            param_grid=small_grid,
+            param_grid=small_grid_with_ne,
             scoring="average_precision",
             cv=CV_INNER,
             n_jobs=-1,
