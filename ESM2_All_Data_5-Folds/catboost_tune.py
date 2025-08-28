@@ -33,7 +33,7 @@ CV_INNER = StratifiedKFold(n_splits=3, shuffle=True, random_state=RANDOM_STATE)
 # --- 调参/训练策略 ---
 SEARCH_ON_CPU = True          # 调参阶段用CPU（稳），最终模型用GPU
 SUB_SAMPLE_FOR_SEARCH = 0.5   # 全量阶段：抽样比例做搜索（降低内存/显存）
-TARGET_SVD_DIM = 512          # =0 关闭SVD；>0 则启用降维到该维（建议512/1024）。默认：512
+TARGET_SVD_DIM = 0          # =0 关闭SVD；>0 则启用降维到该维（建议512/1024）。默认：512
 
 # --- 外部测试路径（存在才评估） ---
 EFF_POS = "/content/POOE_2.0/EffectorP-3.0-Data/TestData_Embedding_ESM2/positivedata_external_test.pkl"
