@@ -36,7 +36,6 @@ CLASS_WEIGHT = "balanced"
 GRID_C_VALUES = [0.5, 1, 2, 3, 5, 7.5, 10, 15, 22, 32, 47, 68, 100, 150]
 GRID_GAMMA_VALUES = [0.005, 0.01, 0.02, 0.05, 0.08, 0.1, 0.15, 0.2, 0.25, 0.3, 0.4, 0.5]
 GRID_SCORING = "average_precision"
-GRID_CV_FOLDS = 3
 GRID_VERBOSE = 2  # 打印进度
 
 # 阈值扫描（基于 decision_function）
@@ -130,16 +129,13 @@ def save_fold_summary_txt(df: pd.DataFrame, title: str, out_path: str):
 
 def decide_n_jobs(user_n_jobs: Optional[int]) -> int:
     """
-    若用户未传参，基于 Colab 的 CPU/内存给出稳妥的并行数：
-    - CPU：最多不超过 (cpu_count-1)，且不超过 4
-    - 内存：若可用内存 < 8GB，则限制为 2
-    你也可以用 --n_jobs 手工指定覆盖
+    若用户未传参，基于 Colab 的 CPU/内存给出稳妥并行数：
+    - 尽量使用 2（即使 CPU=2 也并行2个），内存>=8GB 时允许到 2~4 的更高值
     """
     if user_n_jobs is not None and user_n_jobs > 0:
         print(f"[INFO] Using user-specified n_jobs={user_n_jobs}")
         return user_n_jobs
 
-    # 探测 CPU/内存
     try:
         cpu_cnt = os.cpu_count() or 2
     except Exception:
@@ -151,14 +147,12 @@ def decide_n_jobs(user_n_jobs: Optional[int]) -> int:
     except Exception:
         pass
 
-    # 基于 CPU 上限
-    n_jobs = max(1, min(4, cpu_cnt - 1))  # 不占满所有核，上限 4
-
-    # 基于内存进一步保守
+    # 默认希望至少并行2个
+    n_jobs = 2 if cpu_cnt >= 2 else 1
     if mem_gb is not None:
         print(f"[INFO] Detected CPU={cpu_cnt}, available RAM≈{mem_gb:.1f} GB")
-        if mem_gb < 8:
-            n_jobs = min(n_jobs, 2)
+        if mem_gb >= 16 and cpu_cnt >= 4:
+            n_jobs = min(4, cpu_cnt)  # 机器好一点再提到4
     else:
         print(f"[INFO] Detected CPU={cpu_cnt}, available RAM=Unknown")
 
@@ -169,13 +163,15 @@ def decide_n_jobs(user_n_jobs: Optional[int]) -> int:
 def main():
     parser = argparse.ArgumentParser(description="Cost-Sensitive SVM (Fine Grid, progress + controlled parallel)")
     parser.add_argument("--n_jobs", type=int, default=None, help="并行作业数；不填则自动探测后选择一个稳妥值")
+    parser.add_argument("--cv", type=int, default=3, help="GridSearchCV 的折数（默认3；可以设为2加速）")
+    parser.add_argument("--fast", action="store_true", help="使用 HalvingGridSearchCV 逐步淘汰式快速网格搜索")
     parser.add_argument("--select_metric", type=str, default=SELECT_METRIC, choices=["mcc", "f1"],
                         help="用于从 OOF 曲线中选阈值的指标（默认 mcc）")
     args = parser.parse_args()
 
     ensure_dirs()
 
-    # 1) 全数据 → GridSearchCV（fine grid）
+    # 1) 全数据 → GridSearch（fine grid）
     final_input_len = max_length_over_all_folds()
     X_all, y_all_tr = [], []
     for k in range(1, 6):
@@ -189,23 +185,40 @@ def main():
 
     params = {"C": GRID_C_VALUES, "gamma": GRID_GAMMA_VALUES}
     est = SVC(kernel="rbf", probability=False, class_weight=CLASS_WEIGHT)
-    gs = GridSearchCV(
-        est, params, scoring=GRID_SCORING, cv=GRID_CV_FOLDS,
-        n_jobs=n_jobs_use, verbose=GRID_VERBOSE
-    )
-    gs.fit(X_all, y_all_tr)
-    C_use, gamma_use = float(gs.best_params_["C"]), float(gs.best_params_["gamma"])
+
+    if args.fast:
+        # 逐步淘汰式搜索（能显著减少拟合次数）
+        from sklearn.experimental import enable_halving_search_cv  # noqa: F401
+        from sklearn.model_selection import HalvingGridSearchCV
+        search = HalvingGridSearchCV(
+            est, params, scoring=GRID_SCORING, cv=args.cv,
+            factor=3,  # 每轮淘汰约2/3
+            resource='n_samples', min_resources='exhaust',
+            n_jobs=n_jobs_use, verbose=GRID_VERBOSE, refit=False
+        )
+    else:
+        search = GridSearchCV(
+            est, params, scoring=GRID_SCORING, cv=args.cv,
+            n_jobs=n_jobs_use, verbose=GRID_VERBOSE, refit=False
+        )
+
+    search.fit(X_all, y_all_tr)
+    best_idx = int(np.argmax(search.cv_results_["mean_test_score"]))
+    C_use = float(search.cv_results_["param_C"].data[best_idx])
+    gamma_use = float(search.cv_results_["param_gamma"].data[best_idx])
+    best_cv_score = float(search.cv_results_["mean_test_score"][best_idx])
 
     with open(GRID_SUMMARY, "w", encoding="utf-8") as f:
         json.dump({
             "grid": {"C": GRID_C_VALUES, "gamma": GRID_GAMMA_VALUES,
-                     "cv_folds": GRID_CV_FOLDS, "scoring": GRID_SCORING},
-            "best_params": gs.best_params_,
-            "best_cv_score(auprc)": float(gs.best_score_),
+                     "cv_folds": args.cv, "scoring": GRID_SCORING,
+                     "search": "HalvingGridSearchCV" if args.fast else "GridSearchCV"},
+            "best_params": {"C": C_use, "gamma": gamma_use},
+            "best_cv_score(auprc)": best_cv_score,
             "class_weight": CLASS_WEIGHT,
             "n_jobs": n_jobs_use
         }, f, ensure_ascii=False, indent=2)
-    print(f"[GRID] best: C={C_use}, gamma={gamma_use}, class_weight={CLASS_WEIGHT}, n_jobs={n_jobs_use}")
+    print(f"[GRID] best: C={C_use}, gamma={gamma_use}, class_weight={CLASS_WEIGHT}, n_jobs={n_jobs_use}, cv={args.cv}, fast={args.fast}")
 
     # 2) 用最优 C,gamma 生成 OOF 分数（5 folds）
     y_all, s_all = [], []
@@ -260,7 +273,7 @@ def main():
     with open(BEST_THR_JSON, "w", encoding="utf-8") as f:
         json.dump({"best_threshold": best_thr, "metric": args.select_metric,
                    "svm_params": {"C": C_use, "gamma": gamma_use, "class_weight": CLASS_WEIGHT},
-                   "n_jobs": n_jobs_use}, f, ensure_ascii=False, indent=2)
+                   "n_jobs": n_jobs_use, "cv": args.cv, "fast": args.fast}, f, ensure_ascii=False, indent=2)
     print(f"[INFO] Best threshold by {args.select_metric} (OOF): {best_thr:.6f}")
     print("[INFO] OOF Metrics @ best threshold:")
     print({k: round(best_row[k], 4) for k in ["precision","recall","specificity","accuracy","f1","mcc","auprc","auroc"]})
@@ -298,7 +311,7 @@ def main():
         "score_type": "decision_function",
         "input_len": final_input_len,
         "svm_params": {"C": C_use, "gamma": gamma_use, "class_weight": CLASS_WEIGHT},
-        "n_jobs": n_jobs_use
+        "n_jobs": n_jobs_use, "cv": args.cv, "fast": args.fast
     }, MODEL_WITH_THR)
     print(f"[SAVE] {MODEL_WITH_THR}")
 
@@ -351,7 +364,7 @@ def main():
                 "metrics_at_best": {k: float(v) for k, v in mts_best.items()},
                 "metrics_at_0": {k: float(v) for k, v in mts_0.items()},
                 "svm_params": {"C": C_use, "gamma": gamma_use, "class_weight": CLASS_WEIGHT},
-                "n_jobs": n_jobs_use
+                "n_jobs": n_jobs_use, "cv": args.cv, "fast": args.fast
             }, f, ensure_ascii=False, indent=2)
 
         print("\n[EXTERNAL] Metrics @ best threshold (OOF-chosen)")
@@ -364,7 +377,7 @@ def main():
     except FileNotFoundError as e:
         print(f"[INFO] External test skipped (missing file: {e})")
 
-    print("\n[DONE] CS-SVM (Fine Grid, controlled parallel) → OOF 选阈值 → 5-Fold 汇总 → 最终模型 → External 评估 完成。")
+    print("\n[DONE] CS-SVM (Fine Grid, controlled/fast search) → OOF 选阈值 → 5-Fold 汇总 → 最终模型 → External 评估 完成。")
 
 if __name__ == "__main__":
     main()
