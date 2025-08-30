@@ -1,0 +1,12 @@
+{
+  "best_threshold": 0.19263437488142454,
+  "metric": "mcc",
+  "svm_params": {
+    "C": 1.0,
+    "gamma": 0.15,
+    "class_weight": "balanced"
+  },
+  "n_jobs": 2,
+  "cv": 3,
+  "fast": true
+}

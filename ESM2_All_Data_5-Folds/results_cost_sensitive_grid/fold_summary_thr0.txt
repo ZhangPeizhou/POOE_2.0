@@ -1,0 +1,12 @@
+========================================
+5-Fold Summary [Cost-Sensitive SVM (Grid)] (thr=0.0, decision_function)
+Metric       |    Mean    |    Std    
+----------------------------------------
+precision    | 0.780 ± 0.026
+recall       | 0.878 ± 0.029
+specificity  | 0.917 ± 0.013
+accuracy     | 0.907 ± 0.008
+mcc          | 0.766 ± 0.020
+f1           | 0.826 ± 0.015
+auroc        | 0.952 ± 0.007
+auprc        | 0.862 ± 0.027

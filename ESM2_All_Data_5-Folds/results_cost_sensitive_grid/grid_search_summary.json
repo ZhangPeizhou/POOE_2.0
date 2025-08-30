@@ -1,0 +1,44 @@
+{
+  "grid": {
+    "C": [
+      0.5,
+      1,
+      2,
+      3,
+      5,
+      7.5,
+      10,
+      15,
+      22,
+      32,
+      47,
+      68,
+      100,
+      150
+    ],
+    "gamma": [
+      0.005,
+      0.01,
+      0.02,
+      0.05,
+      0.08,
+      0.1,
+      0.15,
+      0.2,
+      0.25,
+      0.3,
+      0.4,
+      0.5
+    ],
+    "cv_folds": 3,
+    "scoring": "average_precision",
+    "search": "HalvingGridSearchCV"
+  },
+  "best_params": {
+    "C": 1.0,
+    "gamma": 0.15
+  },
+  "best_cv_score(auprc)": 0.9576147069579494,
+  "class_weight": "balanced",
+  "n_jobs": 2
+}
