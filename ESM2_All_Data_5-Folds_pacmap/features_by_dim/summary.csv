@@ -1,0 +1,13 @@
+fold,dim,X_train_reduced_shape,X_val_reduced_shape,out_dir,X_train_full_reduced_shape
+1,64,"(2881, 64)","(723, 64)",/content/POOE_2.0/ESM2_All_Data_5-Folds_pacmap/features_by_dim/dim_64/fold_1,
+1,128,"(2881, 100)","(723, 100)",/content/POOE_2.0/ESM2_All_Data_5-Folds_pacmap/features_by_dim/dim_128/fold_1,
+2,64,"(2886, 64)","(722, 64)",/content/POOE_2.0/ESM2_All_Data_5-Folds_pacmap/features_by_dim/dim_64/fold_2,
+2,128,"(2886, 100)","(722, 100)",/content/POOE_2.0/ESM2_All_Data_5-Folds_pacmap/features_by_dim/dim_128/fold_2,
+3,64,"(2885, 64)","(722, 64)",/content/POOE_2.0/ESM2_All_Data_5-Folds_pacmap/features_by_dim/dim_64/fold_3,
+3,128,"(2885, 100)","(722, 100)",/content/POOE_2.0/ESM2_All_Data_5-Folds_pacmap/features_by_dim/dim_128/fold_3,
+4,64,"(2885, 64)","(722, 64)",/content/POOE_2.0/ESM2_All_Data_5-Folds_pacmap/features_by_dim/dim_64/fold_4,
+4,128,"(2885, 100)","(722, 100)",/content/POOE_2.0/ESM2_All_Data_5-Folds_pacmap/features_by_dim/dim_128/fold_4,
+5,64,"(2883, 64)","(722, 64)",/content/POOE_2.0/ESM2_All_Data_5-Folds_pacmap/features_by_dim/dim_64/fold_5,
+5,128,"(2883, 100)","(722, 100)",/content/POOE_2.0/ESM2_All_Data_5-Folds_pacmap/features_by_dim/dim_128/fold_5,
+FULL,64,,,/content/POOE_2.0/ESM2_All_Data_5-Folds_pacmap/features_by_dim/dim_64/full_train,"(14420, 64)"
+FULL,128,,,/content/POOE_2.0/ESM2_All_Data_5-Folds_pacmap/features_by_dim/dim_128/full_train,"(14420, 100)"

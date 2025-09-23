@@ -1,0 +1,22 @@
+{
+  "fold": 1,
+  "n_components": 64,
+  "target_fixed_dim": 1280,
+  "X_train_shape": [
+    2881,
+    64
+  ],
+  "X_val_shape": [
+    723,
+    64
+  ],
+  "basis_file": "basis_train_norm.npy",
+  "note": "PaCMAP fitted on train; val transformed with explicit basis (no PCA).",
+  "pac_params": {
+    "n_neighbors": 20,
+    "MN_ratio": 0.5,
+    "FP_ratio": 2.0,
+    "random_state": 42,
+    "num_iters": 450
+  }
+}
