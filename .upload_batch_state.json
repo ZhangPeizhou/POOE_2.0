@@ -1,7 +1,5 @@
 {
-  "pending": [
-    "../_upload_pool_no_gz/Embeddings/ProtT5/Fungtion/Fungtion_Training_Negative_part001.csv"
-  ],
+  "pending": [],
   "done": [
     "../_upload_pool_no_gz/Embeddings/ProtT5/EffectorP/ALL_ANIMAL_SECRETOMES_noHomology__manifest.json",
     "../_upload_pool_no_gz/Embeddings/ProtT5/EffectorP/ALL_ECTOMYCORRHIZAL_SECRETOMES_noHomology__manifest.json",
@@ -38,8 +36,9 @@
     "../_upload_pool_no_gz/Embeddings/ProtT5/EffectorP/ALL_SAPROPHYTE_BROWNALGAE_SECRETOMES_noHomology_part004.csv",
     "../_upload_pool_no_gz/Embeddings/ProtT5/EffectorP/ALL_SAPROPHYTE_BROWNALGAE_SECRETOMES_noHomology_part005.csv",
     "../_upload_pool_no_gz/Embeddings/ProtT5/EffectorP/ALL_SAPROPHYTE_BROWNALGAE_SECRETOMES_noHomology_part006.csv",
-    "../_upload_pool_no_gz/Embeddings/ProtT5/EffectorP/ALL_SAPROPHYTE_BROWNALGAE_SECRETOMES_noHomology_part007.csv"
+    "../_upload_pool_no_gz/Embeddings/ProtT5/EffectorP/ALL_SAPROPHYTE_BROWNALGAE_SECRETOMES_noHomology_part007.csv",
+    "../_upload_pool_no_gz/Embeddings/ProtT5/Fungtion/Fungtion_Training_Negative_part001.csv"
   ],
-  "batch": 23,
+  "batch": 24,
   "manifests_added": true
 }
