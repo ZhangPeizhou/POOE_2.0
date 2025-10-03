@@ -1,0 +1,8 @@
+
+# ignore large originals split into shards
+/Embeddings/ProtT5/EffectorP/ALL_ANIMAL_SECRETOMES_noHomology.csv
+/Embeddings/ProtT5/EffectorP/ALL_ECTOMYCORRHIZAL_SECRETOMES_noHomology.csv
+/Embeddings/ProtT5/EffectorP/ALL_OOMYCETE_SECRETOMES_RxLR_ALL_BIOTROPH_HEMIBIOTROPH_SECRETOMES_noHomology.csv
+/Embeddings/ProtT5/EffectorP/ALL_OOMYCETE_SECRETOMES_noRxLR_ALL_NECROTROPH_HEMIBIOTROPH_SECRETOMES_noHomology.csv
+/Embeddings/ProtT5/EffectorP/ALL_SAPROPHYTE_BROWNALGAE_SECRETOMES_noHomology.csv
+/Embeddings/ProtT5/Fungtion/Fungtion_Training_Negative.csv
