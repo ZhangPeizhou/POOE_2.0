@@ -1,6 +1,5 @@
 {
   "pending": [
-    "../_upload_pool_no_gz/Embeddings/ProtT5/EffectorP/ALL_OOMYCETE_SECRETOMES_noRxLR_ALL_NECROTROPH_HEMIBIOTROPH_SECRETOMES_noHomology_part002.csv",
     "../_upload_pool_no_gz/Embeddings/ProtT5/EffectorP/ALL_OOMYCETE_SECRETOMES_noRxLR_ALL_NECROTROPH_HEMIBIOTROPH_SECRETOMES_noHomology_part003.csv",
     "../_upload_pool_no_gz/Embeddings/ProtT5/EffectorP/ALL_OOMYCETE_SECRETOMES_noRxLR_ALL_NECROTROPH_HEMIBIOTROPH_SECRETOMES_noHomology_part004.csv",
     "../_upload_pool_no_gz/Embeddings/ProtT5/EffectorP/ALL_OOMYCETE_SECRETOMES_noRxLR_ALL_NECROTROPH_HEMIBIOTROPH_SECRETOMES_noHomology_part005.csv",
@@ -38,8 +37,9 @@
     "../_upload_pool_no_gz/Embeddings/ProtT5/EffectorP/ALL_OOMYCETE_SECRETOMES_RxLR_ALL_BIOTROPH_HEMIBIOTROPH_SECRETOMES_noHomology_part004.csv",
     "../_upload_pool_no_gz/Embeddings/ProtT5/EffectorP/ALL_OOMYCETE_SECRETOMES_RxLR_ALL_BIOTROPH_HEMIBIOTROPH_SECRETOMES_noHomology_part005.csv",
     "../_upload_pool_no_gz/Embeddings/ProtT5/EffectorP/ALL_OOMYCETE_SECRETOMES_RxLR_ALL_BIOTROPH_HEMIBIOTROPH_SECRETOMES_noHomology_part006.csv",
-    "../_upload_pool_no_gz/Embeddings/ProtT5/EffectorP/ALL_OOMYCETE_SECRETOMES_noRxLR_ALL_NECROTROPH_HEMIBIOTROPH_SECRETOMES_noHomology_part001.csv"
+    "../_upload_pool_no_gz/Embeddings/ProtT5/EffectorP/ALL_OOMYCETE_SECRETOMES_noRxLR_ALL_NECROTROPH_HEMIBIOTROPH_SECRETOMES_noHomology_part001.csv",
+    "../_upload_pool_no_gz/Embeddings/ProtT5/EffectorP/ALL_OOMYCETE_SECRETOMES_noRxLR_ALL_NECROTROPH_HEMIBIOTROPH_SECRETOMES_noHomology_part002.csv"
   ],
-  "batch": 9,
+  "batch": 10,
   "manifests_added": true
 }
