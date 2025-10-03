@@ -1,12 +1,10 @@
 {
   "pending": [
-    "../_upload_pool_no_gz/Embeddings/ProtT5/EffectorP/ALL_OOMYCETE_SECRETOMES_RxLR_ALL_BIOTROPH_HEMIBIOTROPH_SECRETOMES_noHomology_part001.csv",
     "../_upload_pool_no_gz/Embeddings/ProtT5/EffectorP/ALL_OOMYCETE_SECRETOMES_RxLR_ALL_BIOTROPH_HEMIBIOTROPH_SECRETOMES_noHomology_part002.csv",
     "../_upload_pool_no_gz/Embeddings/ProtT5/EffectorP/ALL_OOMYCETE_SECRETOMES_RxLR_ALL_BIOTROPH_HEMIBIOTROPH_SECRETOMES_noHomology_part003.csv",
     "../_upload_pool_no_gz/Embeddings/ProtT5/EffectorP/ALL_OOMYCETE_SECRETOMES_RxLR_ALL_BIOTROPH_HEMIBIOTROPH_SECRETOMES_noHomology_part004.csv",
     "../_upload_pool_no_gz/Embeddings/ProtT5/EffectorP/ALL_OOMYCETE_SECRETOMES_RxLR_ALL_BIOTROPH_HEMIBIOTROPH_SECRETOMES_noHomology_part005.csv",
     "../_upload_pool_no_gz/Embeddings/ProtT5/EffectorP/ALL_OOMYCETE_SECRETOMES_RxLR_ALL_BIOTROPH_HEMIBIOTROPH_SECRETOMES_noHomology_part006.csv",
-    "../_upload_pool_no_gz/Embeddings/ProtT5/EffectorP/ALL_OOMYCETE_SECRETOMES_RxLR_ALL_BIOTROPH_HEMIBIOTROPH_SECRETOMES_noHomology_part007.csv",
     "../_upload_pool_no_gz/Embeddings/ProtT5/EffectorP/ALL_OOMYCETE_SECRETOMES_noRxLR_ALL_NECROTROPH_HEMIBIOTROPH_SECRETOMES_noHomology_part001.csv",
     "../_upload_pool_no_gz/Embeddings/ProtT5/EffectorP/ALL_OOMYCETE_SECRETOMES_noRxLR_ALL_NECROTROPH_HEMIBIOTROPH_SECRETOMES_noHomology_part002.csv",
     "../_upload_pool_no_gz/Embeddings/ProtT5/EffectorP/ALL_OOMYCETE_SECRETOMES_noRxLR_ALL_NECROTROPH_HEMIBIOTROPH_SECRETOMES_noHomology_part003.csv",
@@ -38,8 +36,10 @@
     "../_upload_pool_no_gz/Embeddings/ProtT5/EffectorP/ALL_ECTOMYCORRHIZAL_SECRETOMES_noHomology_part002.csv",
     "../_upload_pool_no_gz/Embeddings/ProtT5/EffectorP/ALL_SAPROPHYTE_BROWNALGAE_SECRETOMES_noHomology_part008.csv",
     "../_upload_pool_no_gz/Embeddings/ProtT5/EffectorP/ALL_ECTOMYCORRHIZAL_SECRETOMES_noHomology_part003.csv",
-    "../_upload_pool_no_gz/Embeddings/ProtT5/EffectorP/ALL_ECTOMYCORRHIZAL_SECRETOMES_noHomology_part004.csv"
+    "../_upload_pool_no_gz/Embeddings/ProtT5/EffectorP/ALL_ECTOMYCORRHIZAL_SECRETOMES_noHomology_part004.csv",
+    "../_upload_pool_no_gz/Embeddings/ProtT5/EffectorP/ALL_OOMYCETE_SECRETOMES_RxLR_ALL_BIOTROPH_HEMIBIOTROPH_SECRETOMES_noHomology_part001.csv",
+    "../_upload_pool_no_gz/Embeddings/ProtT5/EffectorP/ALL_OOMYCETE_SECRETOMES_RxLR_ALL_BIOTROPH_HEMIBIOTROPH_SECRETOMES_noHomology_part007.csv"
   ],
-  "batch": 2,
+  "batch": 3,
   "manifests_added": true
 }
