@@ -1,0 +1,21 @@
+{
+  "original_fasta": "/content/POOE_2.0/Fungtion-Data/Fungtion_Training_Dataset/Fungtion_Training_Negative.fasta",
+  "out_base": "/content/POOE_2.0/Embeddings/Ankh/Fungtion/Fungtion_Training_Negative",
+  "hidden_dim": 1536,
+  "target_mb": 80,
+  "total_rows": 6740,
+  "total_unique_ids": 6740,
+  "shards": [
+    {
+      "path": "/content/POOE_2.0/Embeddings/Ankh/Fungtion/Fungtion_Training_Negative_part001.csv",
+      "rows": 5741
+    },
+    {
+      "path": "/content/POOE_2.0/Embeddings/Ankh/Fungtion/Fungtion_Training_Negative_part002.csv",
+      "rows": 999
+    }
+  ],
+  "done_ids_file": "/content/POOE_2.0/Embeddings/Ankh/Fungtion/Fungtion_Training_Negative__done_ids.txt",
+  "model_name": "ElnaggarLab/ankh-large",
+  "spaced_tokens": true
+}
