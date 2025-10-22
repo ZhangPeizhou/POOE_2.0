@@ -1,0 +1,22 @@
+{
+  "dims_evaluated": [
+    256,
+    320,
+    384,
+    426,
+    512
+  ],
+  "elbow_rule_delta": 0.005,
+  "recommendation": {
+    "elbow_by_AUPRC": {
+      "dim": 256,
+      "OOF_auprc": 0.802287,
+      "last_gain_to_next": 0.003262
+    },
+    "elbow_by_MCC": {
+      "dim": 256,
+      "best_mcc": 0.704806,
+      "last_gain_to_next": -0.012164
+    }
+  }
+}
