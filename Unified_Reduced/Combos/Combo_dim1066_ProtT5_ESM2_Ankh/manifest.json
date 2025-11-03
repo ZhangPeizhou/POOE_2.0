@@ -1,0 +1,90 @@
+{
+  "order": [
+    "ProtT5",
+    "ESM2",
+    "Ankh"
+  ],
+  "total_dim": 1066,
+  "folds": {
+    "fold_1": {
+      "reference": "Ankh",
+      "train_shape": [
+        2881,
+        782
+      ],
+      "val_shape": [
+        723,
+        782
+      ],
+      "parts": {
+        "ProtT5": 426,
+        "ESM2": 100,
+        "Ankh": 256
+      }
+    },
+    "fold_2": {
+      "reference": "Ankh",
+      "train_shape": [
+        2886,
+        782
+      ],
+      "val_shape": [
+        722,
+        782
+      ],
+      "parts": {
+        "ProtT5": 426,
+        "ESM2": 100,
+        "Ankh": 256
+      }
+    },
+    "fold_3": {
+      "reference": "Ankh",
+      "train_shape": [
+        2885,
+        782
+      ],
+      "val_shape": [
+        722,
+        782
+      ],
+      "parts": {
+        "ProtT5": 426,
+        "ESM2": 100,
+        "Ankh": 256
+      }
+    },
+    "fold_4": {
+      "reference": "Ankh",
+      "train_shape": [
+        2885,
+        782
+      ],
+      "val_shape": [
+        722,
+        782
+      ],
+      "parts": {
+        "ProtT5": 426,
+        "ESM2": 100,
+        "Ankh": 256
+      }
+    },
+    "fold_5": {
+      "reference": "Ankh",
+      "train_shape": [
+        2883,
+        782
+      ],
+      "val_shape": [
+        722,
+        782
+      ],
+      "parts": {
+        "ProtT5": 426,
+        "ESM2": 100,
+        "Ankh": 256
+      }
+    }
+  }
+}
