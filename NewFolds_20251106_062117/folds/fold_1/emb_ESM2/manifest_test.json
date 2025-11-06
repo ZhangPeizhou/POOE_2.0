@@ -1,0 +1,9 @@
+{
+  "model": "ESM2",
+  "fold": 1,
+  "split": "test",
+  "n": 1368,
+  "dim": 384,
+  "chunk_max": 3000,
+  "pooling": "mean"
+}
