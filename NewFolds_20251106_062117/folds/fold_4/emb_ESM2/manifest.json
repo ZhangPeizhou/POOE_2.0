@@ -1,0 +1,6 @@
+{
+  "model": "ESM2",
+  "raw_dim": 1280,
+  "target_dim": 384,
+  "fold": 4
+}

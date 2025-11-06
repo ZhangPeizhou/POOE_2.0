@@ -1,13 +1,9 @@
 {
   "models": [
-    "ESM2",
-    "ProtT5",
-    "Ankh"
+    "ESM2"
   ],
   "dims": [
-    384,
-    512,
-    256
+    384
   ],
-  "total_dim": 1152
+  "total_dim": 384
 }
