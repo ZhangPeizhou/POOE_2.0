@@ -1,0 +1,28 @@
+{
+  "models": [
+    "ProtT5",
+    "ESM2",
+    "Ankh"
+  ],
+  "dims": [
+    512,
+    384,
+    256
+  ],
+  "total_dim": 1152,
+  "col_spans": {
+    "ProtT5": {
+      "start": 0,
+      "end": 512
+    },
+    "ESM2": {
+      "start": 512,
+      "end": 896
+    },
+    "Ankh": {
+      "start": 896,
+      "end": 1152
+    }
+  },
+  "note": "concat order = ProtT5+ESM2+Ankh"
+}
