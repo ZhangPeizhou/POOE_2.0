@@ -1,0 +1,18 @@
+{
+  "fold": 2,
+  "order": [
+    "ESM2",
+    "Ankh",
+    "ProtT5"
+  ],
+  "dims": [
+    384,
+    256,
+    426
+  ],
+  "total_dim": 1066,
+  "train_n": 2435,
+  "test_n": 609,
+  "ref_model": "ESM2",
+  "notes": "features are concatenated column-wise after ID alignment to the reference model"
+}
