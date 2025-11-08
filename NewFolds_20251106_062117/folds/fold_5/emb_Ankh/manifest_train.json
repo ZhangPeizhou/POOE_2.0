@@ -1,9 +1,0 @@
-{
-  "model": "Ankh",
-  "fold": 5,
-  "split": "train",
-  "n": 5533,
-  "dim": 256,
-  "chunk_max": 3000,
-  "pooling": "mean"
-}

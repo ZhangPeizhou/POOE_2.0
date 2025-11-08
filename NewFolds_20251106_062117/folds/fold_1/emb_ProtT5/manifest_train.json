@@ -1,9 +1,0 @@
-{
-  "model": "ProtT5",
-  "fold": 1,
-  "split": "train",
-  "n": 5532,
-  "dim": 512,
-  "chunk_max": 3000,
-  "pooling": "mean"
-}

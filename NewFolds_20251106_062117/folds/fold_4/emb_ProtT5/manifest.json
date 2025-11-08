@@ -1,7 +1,0 @@
-{
-  "model": "ProtT5",
-  "raw_dim": 1024,
-  "target_dim": 512,
-  "fold": 4,
-  "repo": "/root/.cache/huggingface/hub/models--Rostlab--prot_t5_xl_uniref50/snapshots/973be27c52ee6474de9c945952a8008aeb2a1a73"
-}
