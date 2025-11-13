@@ -1,6 +1,6 @@
 {
   "order": "Ankh_ProtT5_ESM2_Master",
-  "dim": 3072,
+  "dim": 1066,
   "n_samples": 15220,
   "label_counts": {
     "1": 3805,
@@ -8,11 +8,11 @@
   },
   "pos_label": 1,
   "device": "gpu",
-  "C": 5.413111419946136,
-  "gamma": 0.0024398637203095195,
-  "threshold": -1.1136984825134277,
+  "C": 276.8564822260971,
+  "gamma": 0.005944778849508406,
+  "threshold": -1.0007458925247192,
   "python": "3.12.12 (main, Oct 10 2025, 08:52:57) [GCC 11.4.0]",
   "platform": "Linux-6.6.105+-x86_64-with-glibc2.35",
-  "time": "2025-11-13 08:32:55",
-  "notes": "Master-space cost-sensitive SVM; GPU uses cuML with sample_weight; CPU uses sklearn with class_weight. AUPRC-driven search."
+  "time": "2025-11-13 10:07:08",
+  "notes": "Cost-sensitive SVM; GPU uses cuML with sample_weight; CPU uses sklearn with class_weight. AUPRC-driven search. MASTER combo."
 }
