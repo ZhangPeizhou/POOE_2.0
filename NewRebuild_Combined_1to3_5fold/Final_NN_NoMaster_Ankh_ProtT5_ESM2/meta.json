@@ -1,0 +1,17 @@
+{
+  "model_type": "MLPClassifier_no_master_combo_Ankh_ProtT5_ESM2",
+  "hidden_layer_sizes": [
+    256,
+    128
+  ],
+  "alpha": 0.0001,
+  "learning_rate_init": 0.001,
+  "max_iter": 400,
+  "best_threshold_mcc": 0.35,
+  "oof_auroc": 0.8741034544882099,
+  "oof_auprc": 0.7581057215419049,
+  "mean_auroc": 0.8799082560355226,
+  "mean_auprc": 0.7720992236295686,
+  "mean_mcc": 0.6123433403712492,
+  "mean_f1": 0.6822742346265612
+}

@@ -1,0 +1,40 @@
+{
+  "model_type": "MLPClassifier",
+  "hidden_layer_sizes": [
+    512,
+    256
+  ],
+  "alpha": 0.0001,
+  "learning_rate_init": 0.001,
+  "max_iter": 200,
+  "early_stopping": true,
+  "validation_fraction": 0.1,
+  "random_state": 42,
+  "threshold_by": "MCC_on_OOF",
+  "best_thr": 0.44999999999999996,
+  "oof_auprc_main": 0.7199986893956484,
+  "oof_best_mcc": 0.589697989989752,
+  "oof_auroc": 0.8581678094905901,
+  "oof_metrics_best_thr": {
+    "AUROC": 0.8581678094905901,
+    "AUPRC": 0.7199986893956484,
+    "F1": 0.6800286327845383,
+    "Precision": 0.7468553459119497,
+    "Recall": 0.6241787122207622,
+    "MCC": 0.589697989989752,
+    "ACC": 0.8531537450722734
+  },
+  "train_auroc": 0.9997390297824922,
+  "train_auprc": 0.9990866567602302,
+  "ext_auroc": 0.7688149242033884,
+  "ext_auprc": 0.5711889248067555,
+  "ext_metrics_best_thr": {
+    "AUROC": 0.7688149242033884,
+    "AUPRC": 0.5711889248067555,
+    "F1": 0.39870689655172414,
+    "Precision": 0.8447488584474886,
+    "Recall": 0.2609308885754584,
+    "MCC": 0.41737140391902855,
+    "ACC": 0.852067868504772
+  }
+}
