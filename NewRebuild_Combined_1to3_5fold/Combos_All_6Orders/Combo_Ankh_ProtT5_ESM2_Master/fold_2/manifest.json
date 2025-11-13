@@ -1,0 +1,22 @@
+{
+  "order": "Ankh_ProtT5_ESM2_Master",
+  "fold": 2,
+  "n_train": 2436,
+  "n_test": 608,
+  "dim": 3072,
+  "pos_train": 609,
+  "neg_train": 1827,
+  "pos_test": 152,
+  "neg_test": 456,
+  "nan_train": 0,
+  "nan_test": 0,
+  "inf_train": 0,
+  "inf_test": 0,
+  "source_combo": "/content/POOE_2.0/NewRebuild_Combined_1to3_5fold/Combos_All_6Orders/Combo_Ankh_ProtT5_ESM2/fold_2",
+  "master_dir": "/content/POOE_2.0/NewRebuild_Combined_1to3_5fold/Master_Space",
+  "mods": [
+    "Ankh",
+    "ProtT5",
+    "ESM2"
+  ]
+}
