@@ -1,0 +1,18 @@
+{
+  "order": "Ankh_ProtT5_ESM2",
+  "paths": {
+    "Ankh": "/content/POOE_2.0/NewRebuild_Combined_1to3_5fold/External_Test_Ankh",
+    "ProtT5": "/content/POOE_2.0/NewRebuild_Combined_1to3_5fold/External_Test_ProtT5",
+    "ESM2": "/content/POOE_2.0/NewRebuild_Combined_1to3_5fold/External_Test_ESM2"
+  },
+  "dims": {
+    "Ankh": 256,
+    "ProtT5": 426,
+    "ESM2": 384,
+    "total": 1066
+  },
+  "n_samples": 3772,
+  "n_pos": 709,
+  "n_neg": 3063,
+  "note": "\u5916\u90e8\u6d4b\u8bd5\u96c6\uff1b\u7279\u5f81\u987a\u5e8f [Ankh, ProtT5, ESM2]\uff1b\u6807\u7b7e\u4e0e\u539f\u59cb FASTA \u4e00\u81f4\u3002"
+}
