@@ -1,0 +1,4 @@
+Negative FASTA: /content/POOE_2.0/Final Version/02_negative_fasta_for_cdhit/negative_unique_for_cdhit.fasta
+Positive FASTA: /content/POOE_2.0/Final Version/02_negative_fasta_for_cdhit/positive_unique_reference.fasta
+NEG count: 98661
+POS count: 761
