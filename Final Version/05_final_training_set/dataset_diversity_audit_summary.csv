@@ -1,0 +1,8 @@
+item,value
+total_clean_negative_sequences,98101.0
+total_clean_negative_clusters,77283.0
+selected_negative_sequences,11415.0
+selected_negative_clusters,11415.0
+cluster_coverage_fraction,0.147704
+sequence_sampling_fraction,0.11636
+avg_selected_sequences_per_selected_cluster,1.0

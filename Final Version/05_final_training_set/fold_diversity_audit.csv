@@ -1,0 +1,6 @@
+fold,negative_count,unique_clusters,avg_cluster_size_of_selected_negatives,max_cluster_size_among_selected_negatives
+1,2283,2283,1.277267,11
+2,2283,2283,1.282523,9
+3,2283,2283,1.255366,8
+4,2283,2283,1.260184,9
+5,2283,2283,1.25011,10
